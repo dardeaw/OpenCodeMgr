@@ -105,6 +105,7 @@ export const I18N = {
     tabPlugins: '🧩 插件管理',
     tabTools: '🛠️ 工具與權限',
     tabRawJson: '📄 設定檔檢視',
+    tabGlobalModels: '🎯 全域模型指派',
     tabModels: '🧠 模型與供應商',
 
     // Sessions Tab
@@ -549,6 +550,7 @@ export const I18N = {
     tabPlugins: '🧩 插件管理',
     tabTools: '🛠️ 工具与权限',
     tabRawJson: '📄 配置文件检视',
+    tabGlobalModels: '🎯 全局模型指派',
     tabModels: '🧠 模型与供应商',
 
     // Sessions Tab
@@ -993,6 +995,7 @@ export const I18N = {
     tabPlugins: '🧩 Plugins',
     tabTools: '🛠️ Tools & Guard',
     tabRawJson: '📄 Raw Config',
+    tabGlobalModels: '🎯 Global Models',
     tabModels: '🧠 Models & Providers',
 
     // Sessions Tab
@@ -1437,6 +1440,7 @@ export const I18N = {
     tabPlugins: '🧩 プラグイン管理',
     tabTools: '🛠️ ツールと権限',
     tabRawJson: '📄 設定ファイル表示',
+    tabGlobalModels: '🎯 グローバルモデル割当',
     tabModels: '🧠 モデルとプロバイダー',
 
     // Sessions Tab

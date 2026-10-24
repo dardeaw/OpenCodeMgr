@@ -318,14 +318,27 @@ export async function saveGlobalModels(nodeId = 'local', data = {}) {
   return { ok: true };
 }
 
-export async function saveProvider(nodeId = 'local', providerId, providerConfig) {
+export async function saveProvider(nodeId = 'local', providerId, providerConfig, modelVisibility = null) {
   if (!providerId) throw new Error('Missing provider id');
   const node = getNode(nodeId);
   await updateNodeJsonc(node, (parsed) => {
     if (!parsed.provider) parsed.provider = {};
     parsed.provider[providerId] = providerConfig || {};
   });
+  if (modelVisibility && typeof modelVisibility === 'object') {
+    try {
+      await runDbHelperOnNode(node, ['set-model-visibility', providerId, JSON.stringify(modelVisibility)]);
+    } catch (e) {
+      console.warn(`[manager-service] set-model-visibility failed on ${node.id}:`, e.message);
+    }
+  }
   return { ok: true, id: providerId };
+}
+
+export async function saveProviderModelVisibility(nodeId = 'local', providerId, modelVisibility = {}) {
+  if (!providerId) throw new Error('Missing provider id');
+  const node = getNode(nodeId);
+  return await runDbHelperOnNode(node, ['set-model-visibility', providerId, JSON.stringify(modelVisibility || {})]);
 }
 
 export async function deleteProvider(nodeId = 'local', providerId) {

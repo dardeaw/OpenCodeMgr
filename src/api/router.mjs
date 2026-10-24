@@ -195,7 +195,10 @@ export async function handleHttpRequest(req, res) {
           return sendJson(res, 200, await managerService.saveGlobalModels(nodeId, data));
 
         case '/api/save-provider':
-          return sendJson(res, 200, await managerService.saveProvider(nodeId, data.id, data.providerConfig));
+          return sendJson(res, 200, await managerService.saveProvider(nodeId, data.id, data.providerConfig, data.modelVisibility));
+
+        case '/api/save-model-visibility':
+          return sendJson(res, 200, await managerService.saveProviderModelVisibility(nodeId, data.id, data.modelVisibility));
 
         case '/api/delete-provider':
           return sendJson(res, 200, await managerService.deleteProvider(nodeId, data.id));

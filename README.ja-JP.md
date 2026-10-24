@@ -1,8 +1,8 @@
-# OpenCodeMgr 統合管理センター (v1.4.0)
+# OpenCodeMgr 統合管理センター (v1.5.0)
 
 **OpenCode (`opencode-ai`)** 向けのクロスプラットフォーム GUI ＆ MCP 管理スイート — **モデル＆プロバイダー管理（OpenCode Zen / Go / Models.dev / カスタムエンドポイント）**、**プラグイン管理＆ロール別割り当て (`plugin/*.js`)**、**カスタムエージェント (`agent/*.md`)**、**システムプロンプト**、**MCP サーバー**、**マルチホスト SSH ノード切り替え**、および **SQLite 対話データベース最適化** を統合。
 
-[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
+[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md) | [変更履歴 (Changelog)](CHANGELOG.md)
 
 ---
 

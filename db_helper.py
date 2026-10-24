@@ -2,6 +2,7 @@ import sqlite3
 import os
 import sys
 import json
+import time
 
 if sys.stdout.encoding != 'utf-8':
     try:
@@ -312,6 +313,102 @@ def get_auth_path():
 def get_catalog_path():
     return os.path.expanduser('~/.cache/opencode/models.json')
 
+def get_desktop_global_dat_path():
+    candidates = [
+        os.path.expanduser('~/AppData/Roaming/ai.opencode.desktop/opencode.global.dat'),
+        os.path.expanduser('~/.config/ai.opencode.desktop/opencode.global.dat'),
+        os.path.expanduser('~/.local/share/ai.opencode.desktop/opencode.global.dat'),
+        os.path.expanduser('~/Library/Application Support/ai.opencode.desktop/opencode.global.dat')
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return candidates[0]
+
+def get_desktop_model_visibility():
+    dat_path = get_desktop_global_dat_path()
+    vis_by_provider = {}
+    if not os.path.exists(dat_path):
+        return vis_by_provider
+    try:
+        with open(dat_path, 'r', encoding='utf-8') as f:
+            dat = json.load(f)
+        raw_model = dat.get('model')
+        if isinstance(raw_model, str):
+            model_obj = json.loads(raw_model)
+        elif isinstance(raw_model, dict):
+            model_obj = raw_model
+        else:
+            return vis_by_provider
+        for item in (model_obj.get('user') or []):
+            if isinstance(item, dict) and item.get('providerID') and item.get('modelID'):
+                pid = item['providerID']
+                mid = item['modelID']
+                vis = item.get('visibility', 'show')
+                vis_by_provider.setdefault(pid, {})[mid] = vis
+    except:
+        pass
+    return vis_by_provider
+
+def set_desktop_model_visibility(provider_id, vis_map_json):
+    dat_path = get_desktop_global_dat_path()
+    if not os.path.exists(dat_path):
+        return {"ok": False, "reason": "no_desktop_dat"}
+    try:
+        vis_map = json.loads(vis_map_json) if isinstance(vis_map_json, str) else (vis_map_json or {})
+        with open(dat_path, 'r', encoding='utf-8') as f:
+            dat = json.load(f)
+        raw_model = dat.get('model')
+        if isinstance(raw_model, str):
+            model_obj = json.loads(raw_model)
+        elif isinstance(raw_model, dict):
+            model_obj = raw_model
+        else:
+            model_obj = {"user": [], "recent": [], "variant": {}}
+
+        existing_user = [
+            x for x in (model_obj.get('user') or [])
+            if isinstance(x, dict) and x.get('providerID') != provider_id
+        ]
+        for mid, vis in vis_map.items():
+            existing_user.append({
+                "modelID": mid,
+                "providerID": provider_id,
+                "visibility": "show" if vis == "show" or vis is True else "hide"
+            })
+        model_obj['user'] = existing_user
+        dat['model'] = json.dumps(model_obj, ensure_ascii=False)
+        with open(dat_path, 'w', encoding='utf-8') as f:
+            json.dump(dat, f, indent='\t', ensure_ascii=False)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+def get_live_zen_model_ids():
+    cache_file = os.path.expanduser('~/.cache/opencode/zen_live_ids.json')
+    try:
+        if os.path.exists(cache_file) and (time.time() - os.path.getmtime(cache_file) < 600):
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    return set(data)
+    except:
+        pass
+    try:
+        import urllib.request
+        req = urllib.request.Request('https://opencode.ai/zen/v1/models', headers={'User-Agent': 'OpenCode-Manager/1.4'})
+        raw = urllib.request.urlopen(req, timeout=3).read().decode('utf-8')
+        parsed = json.loads(raw)
+        ids = [m.get('id') for m in (parsed.get('data') or []) if isinstance(m, dict) and m.get('id') and m.get('id') != 'test']
+        if ids:
+            os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(ids, f)
+            return set(ids)
+    except:
+        pass
+    return None
+
 def get_providers_meta():
     auth_path = get_auth_path()
     auth_data = {}
@@ -322,6 +419,7 @@ def get_providers_meta():
         except:
             pass
 
+    zen_live_set = get_live_zen_model_ids()
     cat_path = get_catalog_path()
     catalog_summary = {}
     if os.path.exists(cat_path):
@@ -332,16 +430,28 @@ def get_providers_meta():
                 if not isinstance(pval, dict):
                     continue
                 raw_models = pval.get('models') or {}
-                m_count = len(raw_models) if isinstance(raw_models, dict) else 0
                 brief = {}
-                if (pid in auth_data or pid in ('opencode', 'opencode-go')) and isinstance(raw_models, dict):
+                deprecated_ids = []
+                if isinstance(raw_models, dict):
                     for mid, mval in raw_models.items():
-                        if isinstance(mval, dict):
-                            lim = mval.get("limit") or {}
-                            brief[mid] = {
-                                "name": mval.get("name") or mid,
-                                "ctx": lim.get("context") or 0
-                            }
+                        if not isinstance(mval, dict):
+                            continue
+                        is_dep = (mval.get("status") == "deprecated")
+                        if pid == 'opencode' and zen_live_set is not None and mid not in zen_live_set:
+                            is_dep = True
+                        if is_dep:
+                            deprecated_ids.append(mid)
+                            continue
+                        lim = mval.get("limit") or {}
+                        brief[mid] = {
+                            "name": mval.get("name") or mid,
+                            "ctx": lim.get("context") or 0
+                        }
+                if pid == 'opencode' and zen_live_set is not None:
+                    for live_id in zen_live_set:
+                        if live_id not in brief and live_id not in deprecated_ids:
+                            brief[live_id] = {"name": live_id, "ctx": 0}
+                m_count = len(brief)
                 catalog_summary[pid] = {
                     "id": pid,
                     "name": pval.get("name") or pid,
@@ -350,7 +460,8 @@ def get_providers_meta():
                     "env": pval.get("env") or [],
                     "doc": pval.get("doc") or "",
                     "model_count": m_count,
-                    "models_brief": brief
+                    "models_brief": brief,
+                    "deprecated_ids": deprecated_ids
                 }
         except:
             pass
@@ -359,7 +470,8 @@ def get_providers_meta():
         "auth": auth_data,
         "auth_path": auth_path,
         "catalog": catalog_summary,
-        "catalog_path": cat_path
+        "catalog_path": cat_path,
+        "model_visibility": get_desktop_model_visibility()
     }
 
 def get_catalog_models(provider_id):
@@ -372,11 +484,16 @@ def get_catalog_models(provider_id):
         pval = raw_cat.get(provider_id)
         if not isinstance(pval, dict):
             return {"models": {}}
+        zen_live_set = get_live_zen_model_ids() if provider_id == 'opencode' else None
         raw_models = pval.get('models') or {}
         models_dict = {}
         if isinstance(raw_models, dict):
             for mid, mval in raw_models.items():
                 if not isinstance(mval, dict):
+                    continue
+                if mval.get("status") == "deprecated":
+                    continue
+                if provider_id == 'opencode' and zen_live_set is not None and mid not in zen_live_set:
                     continue
                 models_dict[mid] = {
                     "id": mid,
@@ -452,3 +569,7 @@ if __name__ == '__main__':
         kval = sys.argv[3] if len(sys.argv) > 3 else ''
         atype = sys.argv[4] if len(sys.argv) > 4 else 'api'
         print(json.dumps(set_auth_entry(pid, kval, atype), ensure_ascii=False))
+    elif action == 'set-model-visibility':
+        pid = sys.argv[2] if len(sys.argv) > 2 else ''
+        vjson = sys.argv[3] if len(sys.argv) > 3 else '{}'
+        print(json.dumps(set_desktop_model_visibility(pid, vjson), ensure_ascii=False))

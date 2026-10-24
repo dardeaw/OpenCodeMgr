@@ -1,6 +1,6 @@
 {
   "name": "opencode-mgr",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Cross-Platform GUI & MCP Management Suite for OpenCode Configuration, Models/Providers, Per-Agent Plugins, Multi-Host Nodes, and SQLite Maintenance",
   "main": "app.mjs",
   "type": "module",

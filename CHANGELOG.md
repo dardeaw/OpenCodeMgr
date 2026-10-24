@@ -1,50 +1,44 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
-## [1.4.0] - 2026-10-25
+## [v1.5.0] - 2026-10-25
 
-### Added
-- **Models & Providers Management (`🧠 Models & Providers`)**:
-  - Full management support for **OpenCode Zen (`opencode`)**, **OpenCode Go (`opencode-go`)**, custom OpenAI-compatible inference servers (`@ai-sdk/openai-compatible`), and cloud providers.
-  - Added **Keyword Fuzzy-Search Combobox Dropdowns** across all 7 global and agent model inputs (`global-primary-model`, `global-small-model`, `global-title-model`, `global-compaction-model`, `agent-model`, `compaction-model`, `title-model`), grouped by Configured Models, OpenCode Zen, OpenCode Go, and Connected Providers.
-  - Added `~/.local/share/opencode/auth.json` credential manager (`/connect` parity) alongside `opencode.jsonc` provider options (`baseURL`, `apiKey`, `whitelist`, `blacklist`).
-  - Added **Official Models.dev Catalog Browser Modal** reading `~/.cache/opencode/models.json` with instant keyword filtering, one-click model spec import, and sub-model parameter tuning (`limit.context`, `limit.input`, `limit.output`, `temperature`, `reasoningEffort`, `attachment`, `modalities`).
-- **Plugin Management & Per-Agent Role Scoping (`🧩 Plugins`)**:
-  - Added full lifecycle management for `plugin/*.js` scripts and `opencode.jsonc` `"plugin"` mount array (enable/disable, load order `↑`/`↓`, live JS source editor, and deletion).
-  - Added **Per-Agent Role Assignment (`all` / `include` / `exclude`)** with two-way synchronization between the **🧩 Plugins** tab and the **🤖 Agents** editor.
-  - Added automatic `plugin-scopes.json` persistence and non-invasive `plugin/_mgr_scope.js` runtime hook wrapper (`__mgrWithAgentScope`).
-- **Built-in Model Context Protocol (MCP) Server (`mcp-server.mjs` & `POST /mcp`)**:
-  - Packaged a zero-dependency MCP Server supporting both **Stdio JSON-RPC 2.0** (newline-delimited and `Content-Length` framed) and **Streamable HTTP (`POST /mcp`)**.
-  - Exposed **16 MCP tools (`opencodemgr_*`)** covering host nodes, session stats/lists/details/pruning, models & providers, custom agents, plugins & per-agent scopes, and MCP server configuration, plus dynamic MCP resources (`opencodemgr://nodes` and `opencodemgr://config/{node}`).
-- **Decoupled Modular Architecture**:
-  - Refactored the monolithic `server.mjs` into clean layers: `src/core/node-transport.mjs`, `src/core/parsers.mjs`, `src/services/manager-service.mjs`, `src/api/router.mjs`, `src/mcp/mcp-server.mjs`, and standalone frontend static assets (`public/index.html`, `public/styles.css`, `public/app.js`).
+### ✨ New Features & Sync Enhancements
+- **Native OpenCode Model Visibility Toggle Switches & Two-Way Sync (`opencode.global.dat`)**:
+  - Replaced legacy Whitelist/Blacklist text inputs with an OpenCode-style **Manage Models (`管理模型`)** iOS toggle switch panel featuring real-time keyword filtering, active/total model counter badge, and a provider-level master switch (`全開 / 全關`).
+  - Added two-way synchronization with OpenCode Desktop's `opencode.global.dat` (`~/AppData/Roaming/ai.opencode.desktop/opencode.global.dat` / `~/.local/share/ai.opencode.desktop/opencode.global.dat` / `~/Library/Application Support/ai.opencode.desktop/opencode.global.dat`) as well as `opencode.jsonc` (`whitelist` / `blacklist`).
+  - Toggling any model or master switch saves immediately via `/api/save-model-visibility` without requiring a manual Save click.
+- **Active-Only Model Catalog Filtering (Live OpenCode Zen Sync)**:
+  - Filtered out historical models marked `"status": "deprecated"` in `~/.cache/opencode/models.json`.
+  - Added live intersection with `https://opencode.ai/zen/v1/models` (with local 10-minute cache at `~/.cache/opencode/zen_live_ids.json` and offline fallback) so `opencode` (OpenCode Zen) only lists currently active models (e.g., 8 active `-free` models instead of 44 historical entries).
+- **Dedicated Global Model Assignment Tab (`🎯 全域模型指派` / `#global-models`)**:
+  - Extracted Global Default Model Assignment (`model`, `small_model`, `agent.title.model`, `agent.compaction.model`) and Built-in Core Agent Settings (`build`, `plan`, `general`, `explore`) into a dedicated top-level navigation tab (`🎯 全域模型指派` / `🎯 Global Models`).
 
-### Changed
-- **Complete 4-Language Localization Overhaul (`i18n.mjs`)**:
-  - Expanded and audited all **322 localization keys** across Traditional Chinese (`zh-TW`), Simplified Chinese (`zh-CN`), English (`en-US`), and Japanese (`ja-JP`) with zero missing keys.
-  - Removed cluttered mixed-language parentheticals from `zh-TW` and `zh-CN` labels.
-  - Updated `changeLanguage()` to immediately re-render all dynamic views, cards, tables, modals, and fuzzy-search comboboxes without requiring a page reload.
-- **Native Windows Launcher (`Launcher.cs` & `app.mjs`)**:
-  - Decoupled background daemon mode (`--server-only`) from GUI window spawning and enforced Win32 window maximization (`SW_MAXIMIZE` + `SetForegroundWindow`).
-
-### Fixed
-- Fixed `stripJsonComments()` corrupting URLs containing `//` (`http://` / `https://`) when parsing `opencode.jsonc`.
-- Implemented the missing `POST /api/save-tools` backend route and `serializeTrimTools()` serializer for `plugin/trim-tools.js`.
-- Replaced fragile regex replacements in `save-mcp`, `delete-mcp`, `save-core-agent`, and `save-permissions` with structured JSONC AST updates (`updateNodeJsonc`).
-- Fixed backup file naming (`${filePath}.bak-${ts}`) so backup files never pollute `agent/*.md` or `plugin/*.js` directory scans.
+### 🎨 UI/UX & Split-View Layout Overhaul
+- **Two-Column Split Layout for Provider Editor (`#models`)**:
+  - **Left Column**: Provider ID, Display Name, AI SDK npm package, Base URL, `opencode.jsonc` API Key, `/connect auth.json` Global Key, and Sub-Models parameter specification table & inline editor.
+  - **Right Column**: Full-height `管理模型` (`.oc-model-toggles-box`) visibility switch list with independent scrolling.
+- **Two-Column Split Layout for Agent Role Editor (`#agents`)**:
+  - **Left Column**: Full-height System Prompt (`#agent-prompt`) editor.
+  - **Right Column**: Multi-line Role Description (`#agent-desc`), 3×2 Dedicated Tool Permission Matrix, and Per-Agent Plugin Scope checkboxes.
+- **Single-Layer Scroll Architecture & Frozen Top Headers**:
+  - Eliminated nested double scrollbars across `#sessions`, `#models`, `#agents`, `#plugins`, `#tools`, and `#raw-json`.
+  - Locked top selection card zones (`.sticky-selector-zone` with 2-row `340px` card grid) and table headers (`position: sticky; top: 0`) so only the target content area (session list, plugin code editor, raw JSONC editor, tool matrix, or model list) scrolls.
+- **Auto-Select First Card on Load & Tab Switch**:
+  - Automatically selects the first card and expands the detail editor panel in `#agents`, `#mcp`, `#plugins`, and `#models`.
+- **Header Button Single-Line Fix**:
+  - Fixed global `select { width: 100% }` override on `.node-select` and added `white-space: nowrap; flex-shrink: 0;` to `.btn` and `.badge` so `⚙️ 管理主機` and `🔄 重新整理` never wrap across lines.
 
 ---
 
-## [1.0.0] - 2026-10-24
+## [v1.4.0] - 2026-10-25
 
-### Added
-- Internationalization (i18n) Engine for English, Traditional Chinese, Simplified Chinese, and Japanese.
-- Session Tree Aggregation connecting root sessions with their subagent executions.
-- Deep Session Pruning System (errors, reasoning `<think>`, large tool outputs, file snapshots, empty step markers, and SQLite `VACUUM`).
-- Multi-Host Fleet Management for localhost, direct Paramiko SSH, and jump-host SSH connections.
-- Visual Editors for system instructions (`AGENTS.local.md`, `SSH_WORKFLOW.md`, `AGENTS.md`), custom agents, MCP servers, tool descriptions, and `opencode.jsonc`.
+### ✨ Features
+- **Modular Architecture**: Refactored backend and frontend into `src/core/`, `src/services/`, `src/api/`, `src/mcp/`, and `public/`.
+- **Models & Providers Management (`#models`)**: Full GUI for OpenCode Zen (`opencode`), OpenCode Go (`opencode-go`), custom providers, `auth.json` credentials, and `Models.dev` catalog import with Fuzzy-Search Comboboxes.
+- **Plugin Management & Per-Agent Role Scoping (`#plugins`)**: Manage `plugin/*.js` load order, source code, and per-agent role inclusion/exclusion (`plugin-scopes.json` + `plugin/_mgr_scope.js`).
+- **Built-in MCP Server (`mcp-server.mjs` & `POST /mcp`)**: Exposed 16 `opencodemgr_*` tools and MCP resources over Stdio and Streamable HTTP.
+- **Full 4-Language i18n**: Complete localization across `zh-TW`, `zh-CN`, `en-US`, and `ja-JP`.

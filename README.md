@@ -1,8 +1,8 @@
-# OpenCodeMgr (v1.4.0)
+# OpenCodeMgr (v1.5.0)
 
 Cross-Platform GUI & MCP Management Suite for **OpenCode** — managing Models & Providers (`OpenCode Zen` / `OpenCode Go` / `Models.dev` / Custom), Per-Agent Plugins (`plugin/*.js`), Custom Agent Roles (`agent/*.md`), System Prompts, MCP Servers, Multi-Host SSH Nodes, and Deep SQLite Session Maintenance.
 
-[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
+[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md) | [Changelog](CHANGELOG.md)
 
 ---
 

@@ -1,8 +1,8 @@
-# OpenCodeMgr 全景管理中心 (v1.4.0)
+# OpenCodeMgr 全景管理中心 (v1.5.0)
 
 專為 **OpenCode (`opencode-ai`)** 打造的跨平台桌面 GUI 與 MCP 管理套件 — 支援 **模型與供應商管理（OpenCode Zen / Go / Models.dev / 自訂端點）**、**插件管理與依角色分配 (`plugin/*.js`)**、**自訂代理角色 (`agent/*.md`)**、**系統提示詞**、**MCP 伺服器**、**多主機 SSH 叢集切換** 與 **SQLite 對話資料庫深度瘦身**。
 
-[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
+[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md) | [更新日誌 (Changelog)](CHANGELOG.md)
 
 ---
 

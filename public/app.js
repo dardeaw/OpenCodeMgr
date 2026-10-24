@@ -120,12 +120,67 @@
     function switchTab(id) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      event.target.classList.add('active');
+      if (event && event.currentTarget) event.currentTarget.classList.add('active');
+      else if (event && event.target) event.target.classList.add('active');
       document.getElementById(id).classList.add('active');
+      const mainEl = document.querySelector('main');
+      if (mainEl) mainEl.scrollTop = 0;
 
       if (id === 'sessions') {
         loadSessionStats();
         loadSessions();
+      } else {
+        ensureDefaultCardSelections();
+      }
+    }
+
+    function ensureDefaultCardSelections() {
+      // 1. Agents (#agents)
+      const agents = state.agents || [];
+      if (agents.length > 0) {
+        const targetAgentId = (currentAgentId && agents.some(a => a.id === currentAgentId)) ? currentAgentId : agents[0].id;
+        selectAgent(targetAgentId);
+      } else {
+        const el = document.getElementById('agent-editor');
+        if (el) el.style.display = 'none';
+      }
+
+      // 2. MCP (#mcp)
+      const mcpMap = (state.config && state.config.mcp) || {};
+      const mcpIds = Object.keys(mcpMap);
+      if (mcpIds.length > 0) {
+        const targetMcpId = (currentMcpId && mcpMap[currentMcpId]) ? currentMcpId : mcpIds[0];
+        selectMcp(targetMcpId, mcpMap[targetMcpId]);
+      } else {
+        const el = document.getElementById('mcp-editor');
+        if (el) el.style.display = 'none';
+      }
+
+      // 3. Plugins (#plugins)
+      const plugins = state.plugins || [];
+      if (plugins.length > 0) {
+        const targetPluginFn = (currentPluginFilename && plugins.some(p => p.filename === currentPluginFilename)) ? currentPluginFilename : plugins[0].filename;
+        selectPlugin(targetPluginFn);
+      } else {
+        const el = document.getElementById('plugin-editor');
+        if (el) el.style.display = 'none';
+      }
+
+      // 4. Providers (#models)
+      const cfgProviders = (state.config && state.config.provider) || {};
+      const authMap = (state.providersMeta && state.providersMeta.auth) || {};
+      const allProviderIds = Array.from(new Set([
+        'opencode',
+        'opencode-go',
+        ...Object.keys(cfgProviders),
+        ...Object.keys(authMap)
+      ]));
+      if (allProviderIds.length > 0) {
+        const targetPid = (currentProviderId && allProviderIds.includes(currentProviderId)) ? currentProviderId : allProviderIds[0];
+        selectProvider(targetPid);
+      } else {
+        const el = document.getElementById('provider-editor');
+        if (el) el.style.display = 'none';
       }
     }
 
@@ -165,7 +220,7 @@
       const isLocal = n && n.type === 'local';
 
       document.getElementById('card-ssh-prompt').style.display = isLocal ? 'none' : 'block';
-      document.getElementById('card-trim-tools').style.display = isLocal ? 'block' : 'none';
+      document.getElementById('card-trim-tools').style.display = isLocal ? 'flex' : 'none';
 
       currentAgentId = null;
       currentMcpId = null;
@@ -845,11 +900,12 @@
         renderAgents();
         renderMcp();
         renderPlugins();
+        ensureDefaultCardSelections();
 
         // Render Tools
         const hasTools = state.tools && Object.keys(state.tools).length > 0;
         const isLocal = state.node === 'local' || state.ip === '192.168.68.102';
-        document.getElementById('card-trim-tools').style.display = (isLocal || hasTools) ? 'block' : 'none';
+        document.getElementById('card-trim-tools').style.display = (isLocal || hasTools) ? 'flex' : 'none';
         if (isLocal || hasTools) {
           renderTools();
         }
@@ -879,6 +935,8 @@
     let currentProviderId = null;
     let currentEditingSubModels = {};
     let currentCatalogModelsCache = {};
+    let currentWhitelistSet = new Set();
+    let currentBlacklistSet = new Set();
 
     const FUZZY_MODEL_INPUT_IDS = [
       'global-primary-model',
@@ -898,11 +956,17 @@
       const catalog = (state.providersMeta && state.providersMeta.catalog) || {};
       const authMap = (state.providersMeta && state.providersMeta.auth) || {};
 
-      // Group 1: Configured models in opencode.jsonc
+      // Group 1: Configured models in opencode.jsonc (excluding catalog-deprecated & disabled models)
       for (const [pid, pObj] of Object.entries(cfgProviders)) {
         const models = (pObj && pObj.models) || {};
         const pName = (pObj && pObj.name) || (catalog[pid] && catalog[pid].name) || pid;
+        const depSet = new Set((catalog[pid] && catalog[pid].deprecated_ids) || []);
+        const wlSet = (Array.isArray(pObj.whitelist) && pObj.whitelist.length > 0) ? new Set(pObj.whitelist) : null;
+        const blSet = (Array.isArray(pObj.blacklist) && pObj.blacklist.length > 0) ? new Set(pObj.blacklist) : null;
         for (const [mid, mObj] of Object.entries(models)) {
+          if (depSet.has(mid)) continue;
+          if (wlSet && !wlSet.has(mid)) continue;
+          if (blSet && blSet.has(mid)) continue;
           const fullId = pid + '/' + mid;
           if (!seen.has(fullId)) {
             seen.add(fullId);
@@ -929,8 +993,21 @@
         visitedPids.add(pid);
         const cObj = catalog[pid];
         if (!cObj || !cObj.models_brief) continue;
+        const pCfgObj = cfgProviders[pid] || {};
+        const wlSet = (Array.isArray(pCfgObj.whitelist) && pCfgObj.whitelist.length > 0) ? new Set(pCfgObj.whitelist) : null;
+        const blSet = (Array.isArray(pCfgObj.blacklist) && pCfgObj.blacklist.length > 0) ? new Set(pCfgObj.blacklist) : null;
+        const visMap = (state.providersMeta && state.providersMeta.model_visibility && state.providersMeta.model_visibility[pid]) || null;
+        const hasDesktopVis = visMap && Object.keys(visMap).length > 0;
+        const hasDesktopHide = hasDesktopVis && Object.values(visMap).includes('hide');
         const pName = cObj.name || pid;
         for (const [mid, mBrief] of Object.entries(cObj.models_brief)) {
+          if (hasDesktopVis) {
+            if (visMap[mid] === 'hide') continue;
+            if (visMap[mid] === undefined && hasDesktopHide) continue;
+          } else {
+            if (wlSet && !wlSet.has(mid)) continue;
+            if (blSet && blSet.has(mid)) continue;
+          }
           const fullId = pid + '/' + mid;
           if (!seen.has(fullId)) {
             seen.add(fullId);
@@ -1243,7 +1320,7 @@
       const catInfo = catalog[pid] || {};
       const authObj = authMap[pid] || {};
 
-      document.getElementById('provider-editor').style.display = 'block';
+      document.getElementById('provider-editor').style.display = 'flex';
       document.getElementById('provider-editor-title').innerText = t('editProviderTitle') + ' : ' + pid;
       document.getElementById('prov-id').value = pid;
       document.getElementById('prov-id').disabled = true;
@@ -1263,13 +1340,21 @@
         authStatusEl.style.color = 'var(--text-muted)';
       }
 
-      document.getElementById('prov-whitelist').value = Array.isArray(pCfg.whitelist) ? pCfg.whitelist.join(', ') : '';
-      document.getElementById('prov-blacklist').value = Array.isArray(pCfg.blacklist) ? pCfg.blacklist.join(', ') : '';
+      // Clone sub-models for editing (filtering out deprecated historical models)
+      const depSet = new Set((catInfo && catInfo.deprecated_ids) || []);
+      const rawSubModels = JSON.parse(JSON.stringify(pCfg.models || {}));
+      for (const dm of depSet) {
+        delete rawSubModels[dm];
+      }
+      currentEditingSubModels = rawSubModels;
 
-      // Clone sub-models for editing
-      currentEditingSubModels = JSON.parse(JSON.stringify(pCfg.models || {}));
+      const wlArr = (Array.isArray(pCfg.whitelist) ? pCfg.whitelist : []).filter(m => !depSet.has(m));
+      const blArr = (Array.isArray(pCfg.blacklist) ? pCfg.blacklist : []).filter(m => !depSet.has(m));
+      if (document.getElementById('prov-model-toggle-search')) document.getElementById('prov-model-toggle-search').value = '';
+      initProviderEnabledModelsState(wlArr, blArr);
       document.getElementById('submodel-editor').style.display = 'none';
       renderSubModelsTable();
+      renderProviderWbCheckboxes();
 
       const catBtn = document.getElementById('btn-browse-catalog-models');
       if (catInfo && catInfo.model_count > 0) {
@@ -1283,13 +1368,12 @@
 
     function openQuickConnectBuiltin(pid) {
       selectProvider(pid);
-      document.getElementById('provider-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function createNewProvider() {
       currentProviderId = null;
       renderProviders();
-      document.getElementById('provider-editor').style.display = 'block';
+      document.getElementById('provider-editor').style.display = 'flex';
       document.getElementById('provider-editor-title').innerText = t('addCustomProvider');
       document.getElementById('prov-id').value = '';
       document.getElementById('prov-id').disabled = false;
@@ -1299,13 +1383,212 @@
       document.getElementById('prov-apikey-jsonc').value = '';
       document.getElementById('prov-auth-key').value = '';
       document.getElementById('prov-auth-status').innerText = '';
-      document.getElementById('prov-whitelist').value = '';
-      document.getElementById('prov-blacklist').value = '';
-
       currentEditingSubModels = {};
+      if (document.getElementById('prov-model-toggle-search')) document.getElementById('prov-model-toggle-search').value = '';
+      initProviderEnabledModelsState([], []);
       document.getElementById('submodel-editor').style.display = 'none';
       renderSubModelsTable();
-      document.getElementById('provider-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      renderProviderWbCheckboxes();
+    }
+
+    let currentEnabledModelsSet = new Set();
+
+    function getProviderCandidateModels() {
+      const pid = (document.getElementById('prov-id') && document.getElementById('prov-id').value.trim()) || currentProviderId || '';
+      const catalog = (state.providersMeta && state.providersMeta.catalog) || {};
+      const depSet = new Set((catalog[pid] && catalog[pid].deprecated_ids) || []);
+      const map = new Map();
+
+      // 1. Sub-models currently configured on this provider
+      for (const [mid, mObj] of Object.entries(currentEditingSubModels || {})) {
+        if (!depSet.has(mid)) {
+          map.set(mid, (mObj && mObj.name) || mid);
+        }
+      }
+
+      // 2. Built-in active catalog models for this provider
+      const catModels = (catalog[pid] && catalog[pid].models_brief) || {};
+      for (const [mid, mBrief] of Object.entries(catModels)) {
+        if (!depSet.has(mid) && !map.has(mid)) {
+          map.set(mid, (mBrief && mBrief.name) || mid);
+        }
+      }
+
+      return Array.from(map.entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+    }
+
+    function initProviderEnabledModelsState(wlArr, blArr) {
+      const pid = (document.getElementById('prov-id') && document.getElementById('prov-id').value.trim()) || currentProviderId || '';
+      const allModels = getProviderCandidateModels();
+      const visMap = (state.providersMeta && state.providersMeta.model_visibility && state.providersMeta.model_visibility[pid]) || null;
+
+      if (visMap && Object.keys(visMap).length > 0) {
+        const hasHide = Object.values(visMap).includes('hide');
+        const enabled = [];
+        for (const m of allModels) {
+          if (visMap[m.id] === 'show') {
+            enabled.push(m.id);
+          } else if (visMap[m.id] === 'hide') {
+            // explicitly hidden in OpenCode Desktop
+          } else if (currentEditingSubModels && currentEditingSubModels[m.id]) {
+            enabled.push(m.id);
+          } else if (!hasHide) {
+            enabled.push(m.id);
+          }
+        }
+        currentEnabledModelsSet = new Set(enabled);
+      } else if (Array.isArray(wlArr) && wlArr.length > 0) {
+        currentEnabledModelsSet = new Set(wlArr);
+      } else if (Array.isArray(blArr) && blArr.length > 0) {
+        const blSet = new Set(blArr);
+        currentEnabledModelsSet = new Set(allModels.map(m => m.id).filter(id => !blSet.has(id)));
+      } else {
+        currentEnabledModelsSet = new Set(allModels.map(m => m.id));
+      }
+      syncProviderWbInputs();
+    }
+
+    function buildCurrentProviderVisibilityMap() {
+      const allModels = getProviderCandidateModels();
+      const map = {};
+      for (const m of allModels) {
+        map[m.id] = currentEnabledModelsSet.has(m.id) ? 'show' : 'hide';
+      }
+      return map;
+    }
+
+    async function persistProviderVisibilityLive() {
+      const pid = (document.getElementById('prov-id') && document.getElementById('prov-id').value.trim()) || currentProviderId || '';
+      if (!pid) return;
+      const visMap = buildCurrentProviderVisibilityMap();
+      if (state.providersMeta) {
+        if (!state.providersMeta.model_visibility) state.providersMeta.model_visibility = {};
+        state.providersMeta.model_visibility[pid] = visMap;
+      }
+      populateAvailableModelsDatalist();
+      try {
+        await fetch('/api/save-model-visibility', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ node: currentNode, id: pid, modelVisibility: visMap })
+        });
+      } catch (e) {}
+    }
+
+    function syncProviderWbInputs() {
+      const allModels = getProviderCandidateModels();
+      const total = allModels.length;
+      const enabledIds = [];
+      const disabledIds = [];
+      for (const m of allModels) {
+        if (currentEnabledModelsSet.has(m.id)) enabledIds.push(m.id);
+        else disabledIds.push(m.id);
+      }
+
+      const wlEl = document.getElementById('prov-whitelist');
+      const blEl = document.getElementById('prov-blacklist');
+      if (total === 0 || disabledIds.length === 0) {
+        // All enabled -> no restriction
+        if (wlEl) wlEl.value = '';
+        if (blEl) blEl.value = '';
+      } else if (enabledIds.length <= disabledIds.length) {
+        // Fewer (or equal) enabled -> store as whitelist
+        if (wlEl) wlEl.value = enabledIds.join(', ');
+        if (blEl) blEl.value = '';
+      } else {
+        // Most enabled, only a few disabled -> store as blacklist
+        if (wlEl) wlEl.value = '';
+        if (blEl) blEl.value = disabledIds.join(', ');
+      }
+
+      const cntEl = document.getElementById('oc-toggle-provider-count');
+      if (cntEl) cntEl.innerText = `${enabledIds.length} / ${total}`;
+
+      const masterSw = document.getElementById('oc-provider-master-switch');
+      if (masterSw) {
+        masterSw.checked = total > 0 && enabledIds.length === total;
+      }
+    }
+
+    function toggleProviderModelVisibility(mid, checked) {
+      if (checked) currentEnabledModelsSet.add(mid);
+      else currentEnabledModelsSet.delete(mid);
+      syncProviderWbInputs();
+      renderProviderWbCheckboxes();
+      persistProviderVisibilityLive();
+    }
+
+    function toggleAllProviderModelsVisibility(checked) {
+      const allModels = getProviderCandidateModels();
+      const query = ((document.getElementById('prov-model-toggle-search') && document.getElementById('prov-model-toggle-search').value) || '').toLowerCase().trim();
+      const targets = query
+        ? allModels.filter(m => m.id.toLowerCase().includes(query) || (m.name && m.name.toLowerCase().includes(query)))
+        : allModels;
+      for (const m of targets) {
+        if (checked) currentEnabledModelsSet.add(m.id);
+        else currentEnabledModelsSet.delete(m.id);
+      }
+      syncProviderWbInputs();
+      renderProviderWbCheckboxes();
+      persistProviderVisibilityLive();
+    }
+
+    function renderProviderWbCheckboxes() {
+      const allModels = getProviderCandidateModels();
+      // Ensure any newly added sub-model is in currentEnabledModelsSet if no restriction was active
+      syncProviderWbInputs();
+
+      const pid = (document.getElementById('prov-id') && document.getElementById('prov-id').value.trim()) || currentProviderId || 'Provider';
+      const catalog = (state.providersMeta && state.providersMeta.catalog) || {};
+      const pTitle = document.getElementById('oc-toggle-provider-title');
+      if (pTitle) {
+        pTitle.innerText = (document.getElementById('prov-name') && document.getElementById('prov-name').value.trim()) || (catalog[pid] && catalog[pid].name) || pid;
+      }
+
+      const listEl = document.getElementById('prov-model-toggle-list');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      const query = ((document.getElementById('prov-model-toggle-search') && document.getElementById('prov-model-toggle-search').value) || '').toLowerCase().trim();
+      const filtered = allModels.filter(m => !query || m.id.toLowerCase().includes(query) || (m.name && m.name.toLowerCase().includes(query)));
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 12px;">' + escapeHtml(t('noSubModelsHint')) + '</div>';
+        return;
+      }
+
+      for (const m of filtered) {
+        const isOn = currentEnabledModelsSet.has(m.id);
+        const row = document.createElement('div');
+        row.className = 'oc-model-toggle-row' + (isOn ? '' : ' off');
+        row.onclick = (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.classList.contains('oc-slider')) return;
+          toggleProviderModelVisibility(m.id, !isOn);
+        };
+
+        const left = document.createElement('div');
+        left.innerHTML = '<div class="oc-model-toggle-title">' + escapeHtml(m.name || m.id) +
+          (m.name && m.name !== m.id ? ' <span class="oc-model-toggle-sub">(' + escapeHtml(m.id) + ')</span>' : '') +
+          '</div>';
+
+        const sw = document.createElement('label');
+        sw.className = 'oc-switch';
+        sw.onclick = (e) => e.stopPropagation();
+        const inp = document.createElement('input');
+        inp.type = 'checkbox';
+        inp.checked = isOn;
+        inp.onchange = () => toggleProviderModelVisibility(m.id, inp.checked);
+        const slider = document.createElement('span');
+        slider.className = 'oc-slider';
+        sw.appendChild(inp);
+        sw.appendChild(slider);
+
+        row.appendChild(left);
+        row.appendChild(sw);
+        listEl.appendChild(row);
+      }
     }
 
     function renderSubModelsTable() {
@@ -1439,8 +1722,10 @@
       }
 
       currentEditingSubModels[mid] = mObj;
+      currentEnabledModelsSet.add(mid);
       document.getElementById('submodel-editor').style.display = 'none';
       renderSubModelsTable();
+      renderProviderWbCheckboxes();
       showToast(t('subModelListUpdatedToast'));
     }
 
@@ -1448,6 +1733,7 @@
       if (!confirm(t('confirmDeleteModel') + mid + '?')) return;
       delete currentEditingSubModels[mid];
       renderSubModelsTable();
+      renderProviderWbCheckboxes();
     }
 
     async function saveCurrentProvider() {
@@ -1499,7 +1785,8 @@
         body: JSON.stringify({
           node: currentNode,
           id: pid,
-          providerConfig: pObj
+          providerConfig: pObj,
+          modelVisibility: buildCurrentProviderVisibilityMap()
         })
       });
       currentProviderId = pid;
@@ -1675,7 +1962,9 @@
         modalities: m.modalities || { input: ['text'], output: ['text'] },
         limit: m.limit || { context: 128000, output: 8192 }
       };
+      currentEnabledModelsSet.add(mid);
       renderSubModelsTable();
+      renderProviderWbCheckboxes();
       document.getElementById('catalog-modal').style.display = 'none';
       openSubModelEditor(mid);
       showToast(t('catalogImportedToast', { ref: pid + '/' + mid }));
@@ -1713,7 +2002,7 @@
       renderAgents();
       const a = (state.agents || []).find(x => x.id === id);
       if (!a) return;
-      document.getElementById('agent-editor').style.display = 'block';
+      document.getElementById('agent-editor').style.display = 'flex';
       document.getElementById('agent-editor-title').innerText = t('editAgent') + ' : ' + a.id;
       document.getElementById('agent-id').value = a.id;
       document.getElementById('agent-id').disabled = true;
@@ -1738,7 +2027,7 @@
     function createNewAgent() {
       currentAgentId = null;
       renderAgents();
-      document.getElementById('agent-editor').style.display = 'block';
+      document.getElementById('agent-editor').style.display = 'flex';
       document.getElementById('agent-editor-title').innerText = t('addAgent');
       document.getElementById('agent-id').value = '';
       document.getElementById('agent-id').disabled = false;
@@ -1810,7 +2099,7 @@
         id,
         mode: document.getElementById('agent-mode').value,
         model: document.getElementById('agent-model').value.trim(),
-        description: document.getElementById('agent-desc').value.trim(),
+        description: document.getElementById('agent-desc').value.replace(/\r?\n+/g, ' ').trim(),
         prompt: document.getElementById('agent-prompt').value,
         permissions: perms,
         customRules: customRules,
@@ -1970,7 +2259,7 @@
       const p = (state.plugins || []).find(x => x.filename === filename);
       if (!p) return;
 
-      document.getElementById('plugin-editor').style.display = 'block';
+      document.getElementById('plugin-editor').style.display = 'flex';
       document.getElementById('plugin-editor-title').innerText = t('editPluginTitle') + ' : ' + p.filename;
       document.getElementById('plugin-filename').value = p.filename;
       document.getElementById('plugin-filename').disabled = true;
@@ -1983,13 +2272,12 @@
 
       document.getElementById('plugin-code').value = p.content || '';
       document.getElementById('btn-delete-plugin').style.display = 'inline-flex';
-      document.getElementById('plugin-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function createNewPlugin() {
       currentPluginFilename = null;
       renderPlugins();
-      document.getElementById('plugin-editor').style.display = 'block';
+      document.getElementById('plugin-editor').style.display = 'flex';
       document.getElementById('plugin-editor-title').innerText = t('addPluginBtn');
       document.getElementById('plugin-filename').value = '';
       document.getElementById('plugin-filename').disabled = false;
@@ -2007,7 +2295,6 @@
         '  };\n' +
         '};\n';
       document.getElementById('btn-delete-plugin').style.display = 'none';
-      document.getElementById('plugin-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     async function saveCurrentPlugin() {
