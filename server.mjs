@@ -119,20 +119,48 @@ function parseAgentMarkdown(content, filename) {
   let mode = 'all';
   let model = '';
   let prompt = content;
+  let permissions = {};
+  let customRules = [];
 
   const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (fmMatch) {
     const fm = fmMatch[1];
     prompt = fmMatch[2].trim();
-    for (const line of fm.split('\n')) {
+    let inPerm = false;
+    for (const rawLine of fm.split('\n')) {
+      const line = rawLine.replace(/\r$/, '');
       const trimmed = line.trim();
-      if (trimmed.startsWith('description:')) description = trimmed.slice(12).trim();
-      else if (trimmed.startsWith('mode:')) mode = trimmed.slice(5).trim();
-      else if (trimmed.startsWith('model:')) model = trimmed.slice(6).trim();
+      if (trimmed.startsWith('description:')) {
+        description = trimmed.slice(12).trim();
+        inPerm = false;
+      } else if (trimmed.startsWith('mode:')) {
+        mode = trimmed.slice(5).trim();
+        inPerm = false;
+      } else if (trimmed.startsWith('model:')) {
+        model = trimmed.slice(6).trim();
+        inPerm = false;
+      } else if (trimmed.startsWith('permission:') || trimmed.startsWith('permissions:')) {
+        inPerm = true;
+      } else if (inPerm) {
+        if (line.startsWith(' ') || line.startsWith('\t')) {
+          const parts = trimmed.split(':');
+          if (parts.length >= 2) {
+            const key = parts[0].trim();
+            const val = parts.slice(1).join(':').trim().replace(/['"]/g, '');
+            if (['edit', 'bash', 'read', 'grep', 'glob', 'task', 'websearch', 'webfetch'].includes(key)) {
+              permissions[key] = val;
+            } else {
+              customRules.push(trimmed);
+            }
+          }
+        } else if (trimmed) {
+          inPerm = false;
+        }
+      }
     }
   }
 
-  return { id, filename, description, mode, model, prompt, fullContent: content };
+  return { id, filename, description, mode, model, prompt, permissions, customRules, fullContent: content };
 }
 
 // Parse trim-tools.js
@@ -958,6 +986,79 @@ function getHtml(serverDetectedLocale = "zh-TW") {
         <div style="margin-bottom: 12px;">
           <label data-i18n="agentDesc">角色簡介 (Description - 給 LLM 判斷何時啟動)</label>
           <input type="text" id="agent-desc" placeholder="簡述角色專長與啟動時機">
+        </div>
+
+        <!-- Dedicated Agent Tool Permissions -->
+        <div style="background: #090a0d; border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--accent);" data-i18n="agentToolsTitle">專屬 Tools 與權限分配 (Agent Tool Permissions)</span>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-sm" type="button" onclick="applyAgentToolPreset('readonly')" data-i18n="presetReadOnly">⚡ 唯讀審查模式 (禁止改檔/終端)</button>
+              <button class="btn btn-sm" type="button" onclick="applyAgentToolPreset('fulldev')" data-i18n="presetFullDev">⚡ 全功能開發模式 (全部允許)</button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-bottom: 12px;">
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolEdit">修改檔案 (edit / write)</label>
+              <select id="agent-perm-edit" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolBash">終端指令 (bash / shell)</label>
+              <select id="agent-perm-bash" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolRead">讀取檔案 (read)</label>
+              <select id="agent-perm-read" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolSearch">檢索搜尋 (grep / glob)</label>
+              <select id="agent-perm-search" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolTask">委派子任務 (task / subagent)</label>
+              <select id="agent-perm-task" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolWeb">聯網搜尋 (websearch / webfetch)</label>
+              <select id="agent-perm-web" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style="margin-bottom: 4px;" data-i18n="agentToolCustom">自訂指令/資源規則 (每行一個，如 git *: allow 或 mcp_*: deny)</label>
+            <textarea id="agent-perm-custom" style="min-height: 50px; height: 55px; font-size: 12px;" placeholder="'git *': allow&#10;'rm *': deny"></textarea>
+          </div>
         </div>
 
         <div>
@@ -2143,13 +2244,23 @@ function getHtml(serverDetectedLocale = "zh-TW") {
       document.getElementById('agent-desc').value = a.description || '';
       document.getElementById('agent-prompt').value = a.prompt || '';
       document.getElementById('btn-delete-agent').style.display = 'inline-flex';
+
+      // Load agent tool permissions
+      const p = a.permissions || {};
+      document.getElementById('agent-perm-edit').value = p.edit || 'inherit';
+      document.getElementById('agent-perm-bash').value = p.bash || 'inherit';
+      document.getElementById('agent-perm-read').value = p.read || 'inherit';
+      document.getElementById('agent-perm-search').value = p.grep || p.glob || 'inherit';
+      document.getElementById('agent-perm-task').value = p.task || 'inherit';
+      document.getElementById('agent-perm-web').value = p.websearch || p.webfetch || 'inherit';
+      document.getElementById('agent-perm-custom').value = (a.customRules || []).join('\n');
     }
 
     function createNewAgent() {
       currentAgentId = null;
       renderAgents();
       document.getElementById('agent-editor').style.display = 'block';
-      document.getElementById('agent-editor-title').innerText = '新增角色';
+      document.getElementById('agent-editor-title').innerText = t('addAgent');
       document.getElementById('agent-id').value = '';
       document.getElementById('agent-id').disabled = false;
       document.getElementById('agent-mode').value = 'all';
@@ -2157,19 +2268,67 @@ function getHtml(serverDetectedLocale = "zh-TW") {
       document.getElementById('agent-desc').value = '';
       document.getElementById('agent-prompt').value = '';
       document.getElementById('btn-delete-agent').style.display = 'none';
+
+      // Reset permissions to inherit
+      document.getElementById('agent-perm-edit').value = 'inherit';
+      document.getElementById('agent-perm-bash').value = 'inherit';
+      document.getElementById('agent-perm-read').value = 'inherit';
+      document.getElementById('agent-perm-search').value = 'inherit';
+      document.getElementById('agent-perm-task').value = 'inherit';
+      document.getElementById('agent-perm-web').value = 'inherit';
+      document.getElementById('agent-perm-custom').value = '';
+    }
+
+    function applyAgentToolPreset(preset) {
+      if (preset === 'readonly') {
+        document.getElementById('agent-perm-edit').value = 'deny';
+        document.getElementById('agent-perm-bash').value = 'deny';
+        document.getElementById('agent-perm-read').value = 'allow';
+        document.getElementById('agent-perm-search').value = 'allow';
+        document.getElementById('agent-perm-task').value = 'allow';
+        document.getElementById('agent-perm-web').value = 'allow';
+        showToast(t('presetReadOnly'));
+      } else if (preset === 'fulldev') {
+        document.getElementById('agent-perm-edit').value = 'allow';
+        document.getElementById('agent-perm-bash').value = 'allow';
+        document.getElementById('agent-perm-read').value = 'allow';
+        document.getElementById('agent-perm-search').value = 'allow';
+        document.getElementById('agent-perm-task').value = 'allow';
+        document.getElementById('agent-perm-web').value = 'allow';
+        showToast(t('presetFullDev'));
+      }
     }
 
     async function saveCurrentAgent() {
       const id = document.getElementById('agent-id').value.trim();
       if (!id) return alert(t('enterAgentId'));
       showLoading(true);
+
+      const perms = {
+        edit: document.getElementById('agent-perm-edit').value,
+        bash: document.getElementById('agent-perm-bash').value,
+        read: document.getElementById('agent-perm-read').value,
+        grep: document.getElementById('agent-perm-search').value,
+        glob: document.getElementById('agent-perm-search').value,
+        task: document.getElementById('agent-perm-task').value,
+        websearch: document.getElementById('agent-perm-web').value,
+        webfetch: document.getElementById('agent-perm-web').value
+      };
+
+      const customRules = document.getElementById('agent-perm-custom').value
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+
       const payload = {
         node: currentNode,
         id,
         mode: document.getElementById('agent-mode').value,
         model: document.getElementById('agent-model').value.trim(),
         description: document.getElementById('agent-desc').value.trim(),
-        prompt: document.getElementById('agent-prompt').value
+        prompt: document.getElementById('agent-prompt').value,
+        permissions: perms,
+        customRules: customRules
       };
       await fetch('/api/save-agent', {
         method: 'POST',
@@ -2570,7 +2729,24 @@ const server = http.createServer(async (req, res) => {
         const isWindows = node.type === 'local' || node.configDir.includes('\\');
         const sep = isWindows ? '\\' : '/';
         const target = `${node.configDir}${sep}agent${sep}${data.id}.md`;
-        const fileContent = `---\ndescription: ${data.description || ''}\nmode: ${data.mode || 'all'}\nmodel: ${data.model || ''}\n---\n\n${data.prompt || ''}\n`;
+        let fmBlock = `description: ${data.description || ''}\nmode: ${data.mode || 'all'}`;
+        if (data.model) fmBlock += `\nmodel: ${data.model}`;
+        
+        // Build permissions yaml if any specified
+        const perms = data.permissions || {};
+        const customRules = data.customRules || [];
+        const permKeys = Object.keys(perms).filter(k => perms[k] && perms[k] !== 'inherit');
+        if (permKeys.length > 0 || customRules.length > 0) {
+          fmBlock += `\npermission:`;
+          for (const k of permKeys) {
+            fmBlock += `\n  ${k}: "${perms[k]}"`;
+          }
+          for (const cr of customRules) {
+            if (cr.trim()) fmBlock += `\n  ${cr.trim()}`;
+          }
+        }
+
+        const fileContent = `---\n${fmBlock}\n---\n\n${data.prompt || ''}\n`;
         await writeNodeFile(node, target, fileContent);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ ok: true }));
