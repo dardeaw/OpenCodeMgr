@@ -1,6 +1,6 @@
 # OpenCodeMgr
 
-Cross-Platform GUI Management Tool for OpenCode Configuration, Multi-Host Nodes, and SQLite Database Maintenance.
+Cross-Platform GUI Management Tool for OpenCode System Prompts, Agent Roles, MCP Tools, Multi-Host Nodes, and SQLite Database Maintenance.
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
 
@@ -8,15 +8,18 @@ Cross-Platform GUI Management Tool for OpenCode Configuration, Multi-Host Nodes,
 
 ## Overview
 
-OpenCodeMgr is a desktop administrative console designed for OpenCode developers. It provides centralized management for agent definitions, MCP servers, system prompts, permission guards, multi-host SSH nodes, and advanced SQLite conversation session pruning.
+OpenCodeMgr is a comprehensive desktop management dashboard built for developers using OpenCode. It centralizes control over system prompts (instructions), custom agent roles, MCP servers and tool permissions, multi-host SSH fleet deployment, and deep SQLite conversation database maintenance.
 
 ---
 
 ## Key Features
 
-- Multi-Language Support (i18n):
-  - English, Traditional Chinese, Simplified Chinese, Japanese.
-  - Automatic OS / browser language detection with manual persistent switching.
+- Prompt, Agent, and MCP Tool Management:
+  - System Prompts: Live visual editing and versioned backups for primary instructions (AGENTS.local.md), remote SSH workflow rules (SSH_WORKFLOW.md), and global workspace guidelines (AGENTS.md).
+  - Agent Roles: Register, edit, and configure custom agents with execution mode controls (primary, subagent, or all), specialized descriptions for LLM routing, and model overrides.
+  - MCP Servers: Manage local binary executables and remote Model Context Protocol (MCP) endpoints with one-click toggling, timeouts, and argument passing.
+  - Tool Descriptions and Permission Guards: Customize system descriptions exposed to LLMs (trim-tools.js) to reduce token consumption, and configure deny/ask security guards for bash execution (permission.bash).
+  - opencode.jsonc Editor: Live JSONC inspector with instant schema checking and automated backups.
 - Multi-Host Fleet Management:
   - Manage local workstations, direct SSH remote nodes, and jump-host SSH servers within a single unified dashboard.
   - Hot switching between servers with dynamic status indicators.
@@ -30,12 +33,9 @@ OpenCodeMgr is a desktop administrative console designed for OpenCode developers
   - Truncates oversized tool outputs (>1500 characters) while preserving command metadata and execution summaries.
   - Removes redundant temporary file snapshots and empty step marker events.
   - Built-in SQLite VACUUM optimization to recover physical disk space.
-- Configuration Management:
-  - Edit system instructions (AGENTS.local.md, SSH_WORKFLOW.md, AGENTS.md).
-  - Manage custom Agents (prompt, description, model override, mode).
-  - Register and configure MCP servers (local binaries and remote endpoints).
-  - Fine-tune tool descriptions (trim-tools.js) and command permission rules (permission.bash).
-  - Live inspection and auto-backup editor for opencode.jsonc.
+- Multi-Language Support (i18n):
+  - English, Traditional Chinese, Simplified Chinese, Japanese.
+  - Automatic OS / browser language detection with manual persistent switching.
 
 ---
 

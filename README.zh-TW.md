@@ -1,6 +1,6 @@
 # OpenCodeMgr
 
-跨平台 OpenCode 配置管理、多主機節點調度與 SQLite 資料庫深度維護桌面工具。
+跨平台 OpenCode 系統提示詞、角色設定、MCP 工具、多主機節點調度與 SQLite 資料庫維護桌面工具。
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
 
@@ -8,15 +8,18 @@
 
 ## 專案簡介
 
-OpenCodeMgr 專為 OpenCode 開發者打造，提供一站式視覺化管理面板。涵蓋自訂角色 (Agents)、MCP 伺服器、系統指示詞 (Instructions)、危險指令權限守護、多節點 SSH 伺服器切換，以及專業級 SQLite 對話 Session 瘦身清理。
+OpenCodeMgr 專為 OpenCode 開發者打造，提供全方位視覺化管理面板。集中掌控系統指示詞 (Instructions)、自訂角色 (Agents)、MCP 伺服器與工具權限守護、多節點 SSH 主機部署，以及專業級 SQLite 對話 Session 瘦身清理。
 
 ---
 
 ## 核心功能特色
 
-- 多語系支援 (i18n)：
-  - 完整支援繁體中文、簡體中文、English、日本語。
-  - 啟動時自動偵測作業系統 (OS) 與瀏覽器語系，並支援右上角即時切換與持久化記憶。
+- 提示詞、角色與 MCP 工具集中管理：
+  - 系統指示詞管理：線上即時編輯主系統指示 (AGENTS.local.md)、遠端 SSH 工作流規範 (SSH_WORKFLOW.md) 與全域通用規範 (AGENTS.md)，支援自動備份。
+  - 角色設定 (Agent Roles)：註冊與自訂 Agent，完整配置執行模式 (主對話、子代理或通用)、引導 LLM 調度的簡介說明、系統提示詞與覆寫模型。
+  - MCP 伺服器管理：直覺化管理 Model Context Protocol (MCP) 伺服器，支援本機可執行檔與遠端 URL，一鍵啟用/停用、逾時設定與參數配置。
+  - 工具描述客製化與權限守護：自訂提供給 LLM 的各工具描述 (trim-tools.js) 以節省 Token 消耗，並提供 Bash 危險指令 Deny/Ask 攔截規則守護 (permission.bash)。
+  - opencode.jsonc 視覺化：即時檢視核心 JSONC 配置，支援語法檢查與修改時自動備份。
 - 多主機節點管理 (Multi-Host Fleet)：
   - 於單一儀表板統一管理本機工作站、遠端直連 SSH 主機、以及 Jump SSH 跳板伺服器。
   - 熱切換節點，即時健康狀態指示。
@@ -30,12 +33,9 @@ OpenCodeMgr 專為 OpenCode 開發者打造，提供一站式視覺化管理面�
   - 截斷超過 1500 字元的超長日誌與檔案 dump，保留關鍵摘要與狀態標記。
   - 清除歷史暫存大型檔案快照與無意義步驟空標記。
   - 內建一鍵 SQLite VACUUM 實體磁碟空間回收。
-- 配置與權限視覺化：
-  - 線上維護系統指示詞 (AGENTS.local.md, SSH_WORKFLOW.md, AGENTS.md)。
-  - 管理自訂角色設定 (Prompt、簡介、指定模型、執行模式)。
-  - 註冊與啟用 MCP 伺服器 (本機執行檔與遠端 URL)。
-  - 工具說明客製化 (trim-tools.js) 與危險指令攔截 (permission.bash)。
-  - opencode.jsonc 即時檢視與自動備份儲存。
+- 多語系支援 (i18n)：
+  - 完整支援繁體中文、簡體中文、English、日本語。
+  - 啟動時自動偵測作業系統 (OS) 與瀏覽器語系，並支援右上角即時切換與持久化記憶。
 
 ---
 
