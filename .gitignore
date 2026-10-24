@@ -1,0 +1,18 @@
+# Local user nodes configuration (contains private IP/credentials)
+nodes.json
+
+# Logs and runtime artifacts
+*.log
+out.log
+
+# Operating system / build artifacts
+*.exe
+Builder.exe
+OpenCode Manager.exe
+.DS_Store
+Thumbs.db
+node_modules/
+
+# Temporary files
+*.tmp
+*.bak

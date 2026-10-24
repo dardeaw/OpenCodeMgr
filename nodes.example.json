@@ -1,0 +1,21 @@
+# Nodes Configuration Example for OpenCode Manager
+# Rename this file to nodes.json or configure via UI Settings modal.
+[
+  {
+    "id": "local",
+    "name": "Localhost (Windows / Linux / macOS)",
+    "type": "local",
+    "ip": "127.0.0.1",
+    "configDir": "~/.config/opencode",
+    "dbPath": ""
+  },
+  {
+    "id": "remote-server",
+    "name": "Remote Server (SSH)",
+    "type": "ssh",
+    "ip": "192.168.1.100",
+    "user": "ubuntu",
+    "configDir": "/home/ubuntu/.config/opencode",
+    "dbPath": "/home/ubuntu/.local/share/opencode/opencode.db"
+  }
+]
