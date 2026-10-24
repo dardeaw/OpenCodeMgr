@@ -304,6 +304,125 @@ def vacuum_db():
     conn.close()
     return {"ok": True}
 
+def get_auth_path():
+    if "OPENCODE_AUTH_PATH" in os.environ and os.environ["OPENCODE_AUTH_PATH"]:
+        return os.environ["OPENCODE_AUTH_PATH"]
+    return os.path.expanduser('~/.local/share/opencode/auth.json')
+
+def get_catalog_path():
+    return os.path.expanduser('~/.cache/opencode/models.json')
+
+def get_providers_meta():
+    auth_path = get_auth_path()
+    auth_data = {}
+    if os.path.exists(auth_path):
+        try:
+            with open(auth_path, 'r', encoding='utf-8') as f:
+                auth_data = json.load(f)
+        except:
+            pass
+
+    cat_path = get_catalog_path()
+    catalog_summary = {}
+    if os.path.exists(cat_path):
+        try:
+            with open(cat_path, 'r', encoding='utf-8') as f:
+                raw_cat = json.load(f)
+            for pid, pval in raw_cat.items():
+                if not isinstance(pval, dict):
+                    continue
+                raw_models = pval.get('models') or {}
+                m_count = len(raw_models) if isinstance(raw_models, dict) else 0
+                brief = {}
+                if (pid in auth_data or pid in ('opencode', 'opencode-go')) and isinstance(raw_models, dict):
+                    for mid, mval in raw_models.items():
+                        if isinstance(mval, dict):
+                            lim = mval.get("limit") or {}
+                            brief[mid] = {
+                                "name": mval.get("name") or mid,
+                                "ctx": lim.get("context") or 0
+                            }
+                catalog_summary[pid] = {
+                    "id": pid,
+                    "name": pval.get("name") or pid,
+                    "npm": pval.get("npm") or "",
+                    "api": pval.get("api") or "",
+                    "env": pval.get("env") or [],
+                    "doc": pval.get("doc") or "",
+                    "model_count": m_count,
+                    "models_brief": brief
+                }
+        except:
+            pass
+
+    return {
+        "auth": auth_data,
+        "auth_path": auth_path,
+        "catalog": catalog_summary,
+        "catalog_path": cat_path
+    }
+
+def get_catalog_models(provider_id):
+    cat_path = get_catalog_path()
+    if not os.path.exists(cat_path):
+        return {"models": {}}
+    try:
+        with open(cat_path, 'r', encoding='utf-8') as f:
+            raw_cat = json.load(f)
+        pval = raw_cat.get(provider_id)
+        if not isinstance(pval, dict):
+            return {"models": {}}
+        raw_models = pval.get('models') or {}
+        models_dict = {}
+        if isinstance(raw_models, dict):
+            for mid, mval in raw_models.items():
+                if not isinstance(mval, dict):
+                    continue
+                models_dict[mid] = {
+                    "id": mid,
+                    "name": mval.get("name") or mid,
+                    "attachment": bool(mval.get("attachment")),
+                    "reasoning": bool(mval.get("reasoning")),
+                    "tool_call": mval.get("tool_call", True),
+                    "modalities": mval.get("modalities") or {"input": ["text"], "output": ["text"]},
+                    "limit": mval.get("limit") or {},
+                    "cost": mval.get("cost") or {}
+                }
+        return {
+            "provider": {
+                "id": provider_id,
+                "name": pval.get("name") or provider_id,
+                "npm": pval.get("npm") or "",
+                "api": pval.get("api") or "",
+                "env": pval.get("env") or []
+            },
+            "models": models_dict
+        }
+    except Exception as e:
+        return {"error": str(e), "models": {}}
+
+def set_auth_entry(provider_id, key_val, auth_type="api"):
+    auth_path = get_auth_path()
+    os.makedirs(os.path.dirname(auth_path), exist_ok=True)
+    auth_data = {}
+    if os.path.exists(auth_path):
+        try:
+            with open(auth_path, 'r', encoding='utf-8') as f:
+                auth_data = json.load(f)
+        except:
+            pass
+    if key_val is None or key_val == "":
+        if provider_id in auth_data:
+            del auth_data[provider_id]
+    else:
+        auth_data[provider_id] = {
+            "type": auth_type,
+            "key": key_val
+        }
+    with open(auth_path, 'w', encoding='utf-8') as f:
+        json.dump(auth_data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "auth": auth_data}
+
 if __name__ == '__main__':
     action = sys.argv[1] if len(sys.argv) > 1 else 'stats'
     if action == 'stats':
@@ -323,3 +442,13 @@ if __name__ == '__main__':
         print(json.dumps(clean_session(sid, opts), ensure_ascii=False))
     elif action == 'vacuum':
         print(json.dumps(vacuum_db(), ensure_ascii=False))
+    elif action == 'providers-meta':
+        print(json.dumps(get_providers_meta(), ensure_ascii=False))
+    elif action == 'catalog-models':
+        pid = sys.argv[2] if len(sys.argv) > 2 else ''
+        print(json.dumps(get_catalog_models(pid), ensure_ascii=False))
+    elif action == 'set-auth':
+        pid = sys.argv[2] if len(sys.argv) > 2 else ''
+        kval = sys.argv[3] if len(sys.argv) > 3 else ''
+        atype = sys.argv[4] if len(sys.argv) > 4 else 'api'
+        print(json.dumps(set_auth_entry(pid, kval, atype), ensure_ascii=False))

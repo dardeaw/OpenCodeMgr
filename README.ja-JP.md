@@ -1,6 +1,6 @@
-# OpenCodeMgr
+# OpenCodeMgr 統合管理センター (v1.4.0)
 
-クロスプラットフォーム対応 OpenCode システム指示・エージェント設定・MCP ツール・マルチホスト管理・SQLite データベース保守デスクトップツール。
+**OpenCode (`opencode-ai`)** 向けのクロスプラットフォーム GUI ＆ MCP 管理スイート — **モデル＆プロバイダー管理（OpenCode Zen / Go / Models.dev / カスタムエンドポイント）**、**プラグイン管理＆ロール別割り当て (`plugin/*.js`)**、**カスタムエージェント (`agent/*.md`)**、**システムプロンプト**、**MCP サーバー**、**マルチホスト SSH ノード切り替え**、および **SQLite 対話データベース最適化** を統合。
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
 
@@ -8,77 +8,66 @@
 
 ## 概要
 
-OpenCodeMgr は OpenCode 開発者のために設計された総合管理ダッシュボードです。システムプロンプト (Instructions)、カスタムエージェント (Agents)、MCP サーバーおよびツール実行権限、複数 SSH ノードの集中管理、高度な SQLite 会話セッション軽量化をワンストップで統括します。
+**OpenCodeMgr** は外部依存ゼロで動作する OpenCode 用の統合管理ダッシュボード（`http://127.0.0.1:5210`）および **Model Context Protocol (MCP) サーバー（`mcp-server.mjs` / `POST /mcp`）** です。
 
 ---
 
 ## 主な機能
 
-- プロンプト・エージェント・MCP ツールの集中管理:
-  - システム指示管理: メイン指示 (AGENTS.local.md)、リモート SSH 規約 (SSH_WORKFLOW.md)、全体共通指示 (AGENTS.md) のオンライン編集と自動バックアップ。
-  - エージェント設定 (Agent Roles): カスタムエージェントの登録、実行モード (メイン、サブエージェント、共通)、LLM ルーティング用説明文、モデル上書きの柔軟な構成。
-  - MCP サーバー管理: ローカル実行ファイルおよびリモート URL による Model Context Protocol サーバーの登録、有効化/無効化、タイムアウト、引数設定。
-  - ツール説明の最適化と実行権限制御: LLM に提供するツール説明文 (trim-tools.js) を最適化してトークンを削減し、Bash 危険コマンドの Deny/Ask 遮断ルール (permission.bash) を保護。
-  - opencode.jsonc の視覚化: コア JSONC 設定のリアルタイム表示、構文検証、自動バックアップ。
-- マルチホスト集中管理 (Multi-Host Fleet):
-  - ローカルマシン、直接接続 SSH サーバー、Jump SSH 踏み台サーバーを単一ダッシュボードで統合管理。
-  - ノードの動的切り替えとリアルタイム接続ステータス表示。
-- セッションのツリー階層構造化 (Tree Aggregation):
-  - ルート会話とサブエージェント (Subagent) タスクを自動紐付けし、折りたたみ可能なツリー形式で表示。
-  - インライン DOM 展開により、レイアウト崩れやページ上部への強制スクロールを防止。
-- SQLite データベースの深層軽量化クリーンアップ:
-  - 重要な会話内容や生成コードを一切損なうことなく、DB 容量を 40%〜60% 削減。
-  - コマンド異常終了 (Non-0 Exit)、プラグイン遮断、中断されたタスクログを削除。
-  - 長大な AI 思考プロセス (<think> ブロック) を除去。
-  - 1500 文字を超える巨大なツールログを要約付きで 800 文字に切り詰め。
-  - 一時ファイルのスナップショットや空のステップマーカーを削除。
-  - ワンクリックで SQLite VACUUM を実行し、物理ディスク領域を解放。
-- 多言語対応 (i18n):
-  - 英語、繁体字中国語、簡体字中国語、日本語に対応。
-  - OS / ブラウザの言語設定を自動判別し、右上のセレクターから即座に切り替え・保持可能。
+### 1. 🧠 モデル＆プロバイダー管理（OpenCode `/models`・`/connect` 完全準拠）
+- **キーワードあいまい検索コンボボックス**：メインモデル (`model`)、軽量モデル (`small_model`)、タイトル生成 (`agent.title.model`)、コンテキスト圧縮 (`agent.compaction.model`)、および各エージェントのモデル指定でリアルタイム検索＆グループ別選択が可能。
+- **内蔵＆カスタムプロバイダー対応**：**OpenCode Zen (`opencode`)**、**OpenCode Go (`opencode-go`)**、ローカル推論サーバー（`gufo`、`strata`、`llama.cpp`、`vLLM`）、公式クラウド SDK を一元管理。
+- **認証キー＆公式カタログ連携**：`~/.local/share/opencode/auth.json` の読み書きと、`~/.cache/opencode/models.json`（Models.dev カタログ）からのワンクリックインポートに対応。
+
+### 2. 🧩 プラグイン管理＆ロール別（by Agent Role）割り当て
+- `plugin/*.js` の有効化/無効化、`opencode.jsonc` での読み込み順序（`↑` / `↓`）変更、JS コード編集に対応。
+- プラグインごとに **「🌐 全ロール共通 (`all`)」**、**「🎯 指定ロールのみ (`include`)」**、**「🚫 指定ロールを除外 (`exclude`)」** を設定可能（`plugin-scopes.json` と `plugin/_mgr_scope.js` による双方向同期）。
+
+### 3. 🤖 エージェント管理＆ツール権限マトリクス
+- `agent/*.md` の作成・編集と、エージェント別のツール権限（`edit`, `bash`, `read`, `grep`/`glob`, `task`, `websearch`/`webfetch`）およびワンクリックプリセット（読み取り専用 / フル開発）を提供。
+
+### 4. 💬 セッションツリー集約＆ SQLite データベース整理
+- サブエージェント（Subagents）のツリー表示と、エラー履歴・思考プロセス (`<think>`)・長大出力・ファイルスナップショット・ステップマーカーの選択的削除および `VACUUM` 圧縮。
+
+### 5. 🔌 標準 MCP サーバー内蔵（Stdio ＆ HTTP 対応）
+- 全 16 種類の管理ツール（`opencodemgr_*`）を MCP プロトコルで公開し、AI エージェントから直接 OpenCode 環境を管理可能。
 
 ---
 
-## インストールと起動手順
+## モジュール構成
 
-### 動作要件
-- Node.js 18.0.0 以上
-- Python 3.8+ (SQLite 処理および Paramiko SSH 通信用)
-
-### 1. リポジトリのクローン
-```bash
-git clone https://github.com/dardeaw/OpenCodeMgr.git
-cd OpenCodeMgr
+```text
+OpenCodeMgr/
+├── app.mjs                      # デスクトップウィンドウ＆サーバー起動ランチャー
+├── server.mjs                   # 軽量 HTTP サーバーエントリ (Port 5210)
+├── mcp-server.mjs               # スタンドアロン Stdio MCP サーバー (JSON-RPC 2.0)
+├── i18n.mjs                     # 4言語翻訳辞書モジュール (322キー: zh-TW / zh-CN / en-US / ja-JP)
+├── db_helper.py                 # Python SQLite ＆ Models.dev カタログ処理エンジン
+├── src/
+│   ├── core/                    # node-transport.mjs (SSH/FS通信) & parsers.mjs (JSONC/Markdown/Scope変換)
+│   ├── services/                # manager-service.mjs (REST API・MCP 共通ビジネスロジック)
+│   ├── api/                     # router.mjs (HTTP REST API & Streamable HTTP MCP ルーター)
+│   └── mcp/                     # mcp-server.mjs (16 MCP ツール定義＆プロトコル処理)
+└── public/                      # index.html / styles.css / app.js (フロントエンド静的アセット)
 ```
 
-### 2. ノード設定
-設定テンプレートをコピーします:
-```bash
-cp nodes.example.json nodes.json
-```
-nodes.json を編集して環境を設定してください。このファイルは .gitignore により保護され、認証情報が漏洩することはありません。
+---
 
-### 3. アプリケーションの起動
-ネイティブウィンドウモードで起動する場合:
+## クイックスタート
+
 ```bash
+# サーバーとデスクトップアプリウィンドウを起動
 npm start
-```
-HTTP サーバーのみを起動する場合 (http://127.0.0.1:5210):
-```bash
+
+# HTTP サーバーのみ起動 (http://127.0.0.1:5210)
 npm run server
+
+# Stdio MCP サーバーを起動
+npm run mcp
 ```
-
----
-
-## システム構成
-
-- バックエンド (server.mjs): 外部フレームワークに依存しないネイティブ Node.js HTTP サーバー。
-- フロントエンド: 高速な応答性を持つダークテーマ UI とリアルタイム DOM i18n レンダリング。
-- データベースエンジン (db_helper.py): 複数プラットフォーム対応パス解決とツリー構造抽出を行う高性能 Python スクリプト。
-- ウィンドウラッパー (app.mjs): OS 標準のアプリモード (Edge / Chrome) を利用したデスクトップクライアント。
 
 ---
 
 ## ライセンス
 
-MIT License. 詳細は LICENSE をご参照ください。
+MIT License. 詳細は [LICENSE](LICENSE) を参照してください。

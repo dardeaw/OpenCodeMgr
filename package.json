@@ -1,18 +1,32 @@
 {
   "name": "opencode-mgr",
-  "version": "1.0.0",
-  "description": "Cross-Platform GUI Management Tool for OpenCode Configuration, Multi-Host Nodes, and Database Maintenance",
+  "version": "1.4.0",
+  "description": "Cross-Platform GUI & MCP Management Suite for OpenCode Configuration, Models/Providers, Per-Agent Plugins, Multi-Host Nodes, and SQLite Maintenance",
   "main": "app.mjs",
   "type": "module",
   "scripts": {
     "start": "node app.mjs",
     "server": "node server.mjs",
-    "app": "node app.mjs --app"
+    "app": "node app.mjs --app",
+    "mcp": "node mcp-server.mjs"
   },
   "bin": {
-    "opencodemgr": "./app.mjs"
+    "opencodemgr": "./app.mjs",
+    "opencodemgr-mcp": "./mcp-server.mjs"
   },
-  "keywords": ["opencode", "manager", "opencodemgr", "agents", "mcp", "prompts", "sqlite"],
+  "keywords": [
+    "opencode",
+    "manager",
+    "opencodemgr",
+    "mcp",
+    "mcp-server",
+    "agents",
+    "plugins",
+    "providers",
+    "models",
+    "prompts",
+    "sqlite"
+  ],
   "author": "dardeaw",
   "license": "MIT"
 }

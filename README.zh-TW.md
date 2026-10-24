@@ -1,6 +1,6 @@
-# OpenCodeMgr
+# OpenCodeMgr 全景管理中心 (v1.4.0)
 
-跨平台 OpenCode 系統提示詞、角色設定、MCP 工具、多主機節點調度與 SQLite 資料庫維護桌面工具。
+專為 **OpenCode (`opencode-ai`)** 打造的跨平台桌面 GUI 與 MCP 管理套件 — 支援 **模型與供應商管理（OpenCode Zen / Go / Models.dev / 自訂端點）**、**插件管理與依角色分配 (`plugin/*.js`)**、**自訂代理角色 (`agent/*.md`)**、**系統提示詞**、**MCP 伺服器**、**多主機 SSH 叢集切換** 與 **SQLite 對話資料庫深度瘦身**。
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
 
@@ -8,77 +8,97 @@
 
 ## 專案簡介
 
-OpenCodeMgr 專為 OpenCode 開發者打造，提供全方位視覺化管理面板。集中掌控系統指示詞 (Instructions)、自訂角色 (Agents)、MCP 伺服器與工具權限守護、多節點 SSH 主機部署，以及專業級 SQLite 對話 Session 瘦身清理。
+**OpenCodeMgr** 是一套零外部依賴、高穩定性的 OpenCode 視覺化控制中心與 **MCP 伺服器 (`mcp-server.mjs`)**。徹底解決手改 `opencode.jsonc`、跨機同步設定、插件無法依角色分流、以及 SQLite 對話庫 (`opencode.db`) 膨脹卡頓等痛點。
 
 ---
 
-## 核心功能特色
+## 核心功能亮點
 
-- 提示詞、角色與 MCP 工具集中管理：
-  - 系統指示詞管理：線上即時編輯主系統指示 (AGENTS.local.md)、遠端 SSH 工作流規範 (SSH_WORKFLOW.md) 與全域通用規範 (AGENTS.md)，支援自動備份。
-  - 角色設定 (Agent Roles)：註冊與自訂 Agent，完整配置執行模式 (主對話、子代理或通用)、引導 LLM 調度的簡介說明、系統提示詞與覆寫模型。
-  - MCP 伺服器管理：直覺化管理 Model Context Protocol (MCP) 伺服器，支援本機可執行檔與遠端 URL，一鍵啟用/停用、逾時設定與參數配置。
-  - 工具描述客製化與權限守護：自訂提供給 LLM 的各工具描述 (trim-tools.js) 以節省 Token 消耗，並提供 Bash 危險指令 Deny/Ask 攔截規則守護 (permission.bash)。
-  - opencode.jsonc 視覺化：即時檢視核心 JSONC 配置，支援語法檢查與修改時自動備份。
-- 多主機節點管理 (Multi-Host Fleet)：
-  - 於單一儀表板統一管理本機工作站、遠端直連 SSH 主機、以及 Jump SSH 跳板伺服器。
-  - 熱切換節點，即時健康狀態指示。
-- Session 階層化樹狀歸集 (Tree Aggregation)：
-  - 自動關聯主對話與子代理 (Subagent) 任務，支援樹狀摺疊與展開。
-  - 展開時維持 DOM 原位顯示，徹底解決畫面跳動、頁面回滾至頂部與排版歪斜問題。
-- SQLite 資料庫深度瘦身清理：
-  - 精準瘦身 40% 至 60% 空間，完整保留所有重要對話問答與最終程式碼產出。
-  - 清理非 0 異常退出碼 (Non-0 Exit)、外掛防護攔截與中途中斷的調用記錄。
-  - 清除龐大的 AI 思考歷程 (<think> 區塊)。
-  - 截斷超過 1500 字元的超長日誌與檔案 dump，保留關鍵摘要與狀態標記。
-  - 清除歷史暫存大型檔案快照與無意義步驟空標記。
-  - 內建一鍵 SQLite VACUUM 實體磁碟空間回收。
-- 多語系支援 (i18n)：
-  - 完整支援繁體中文、簡體中文、English、日本語。
-  - 啟動時自動偵測作業系統 (OS) 與瀏覽器語系，並支援右上角即時切換與持久化記憶。
+### 1. 🧠 模型與供應商管理（完整對齊 OpenCode `/models` 與 `/connect` 邏輯）
+- **關鍵字模糊搜尋下拉選單（Fuzzy-Search Combobox）**：所有模型指派欄位（主要模型 `model`、輕量模型 `small_model`、自動命名 `agent.title.model`、上下文壓縮 `agent.compaction.model` 與各角色專屬模型）皆內建即時關鍵字模糊搜尋，自動依「⭐ 已配置模型」、「✨ OpenCode Zen」、「🚀 OpenCode Go」、「🔗 已認證供應商」分組顯示。
+- **內建與自訂供應商整合**：原生支援 **OpenCode Zen (`opencode`)**、**OpenCode Go (`opencode-go`)**、自建推論服務（`gufo`、`strata`、`halogen`、`lemonade`、`vLLM`、`llama.cpp`）及各大雲端 SDK。
+- **雙軌金鑰管理**：支援直接讀寫 `~/.local/share/opencode/auth.json`（等同 `/connect`）與 `opencode.jsonc` 內的 `options.baseURL` / `options.apiKey`。
+- **Models.dev 官方目錄瀏覽與一鍵匯入**：直接檢索節點 `~/.cache/opencode/models.json` 數百款模型規格（Context/Output 上限、模態、Reasoning 強度、Free 標記），一鍵匯入或設為預設主模型。
 
----
+### 2. 🧩 插件管理與「依角色 (by Agent Role)」啟停分配
+- **插件掛載與順序調控**：自動掃描 `plugin/*.js` 腳本，支援一鍵啟用/停用（同步更新 `opencode.jsonc` `"plugin"` 陣列）、調整載入順序（`↑` / `↓`）與線上編輯 JS 原始碼。
+- **依角色指派插件範圍（Per-Agent Plugin Scoping）**：可設定插件為 **「🌐 全部角色通用 (`all`)」**、**「🎯 僅指定角色生效 (`include`)」** 或 **「🚫 排除指定角色 (`exclude`)」**。
+- **雙向同步與無侵入 Runtime 包裝**：在「🧩 插件管理」與「🤖 角色管理」兩處勾選即時雙向同步，自動維護 `plugin-scopes.json` 與 `plugin/_mgr_scope.js` 執行期攔截器。
 
-## 安裝與快速開始
+### 3. 🤖 角色管理與專屬工具權限矩陣
+- 視覺化管理 `agent/*.md`（執行模式 `all` / `subagent` / `primary`、指定模型覆寫、角色簡介與系統提示詞）。
+- 內建專屬工具權限分配（`edit`、`bash`、`read`、`grep`/`glob`、`task`、`websearch`/`webfetch`）與自訂規則，支援一鍵套用「⚡ 唯讀審查模式」與「⚡ 全功能開發模式」。
 
-### 環境需求
-- Node.js 18.0.0 以上
-- Python 3.8+ (供 SQLite 處理模組與 Paramiko SSH 使用)
+### 4. 💬 Session 樹狀歸集與 SQLite 深度瘦身清理
+- **Subagent 樹狀歸集**：自動將子任務（Subagents）歸集於主對話之下，無捲動跳動展開/收合，並計算含子任務之總空間與 Token 消耗。
+- **五維度無損瘦身**：一鍵清理「工具失敗與外掛攔截記錄」、「AI 思考歷程 (`<think>`)」、「超長工具輸出截斷 (`>1500` 字元)」、「大型檔案快照」與「步驟空標記」，並支援 `VACUUM` 壓縮回收 40%～60% 磁碟空間。
 
-### 1. 下載專案
-```bash
-git clone https://github.com/dardeaw/OpenCodeMgr.git
-cd OpenCodeMgr
-```
+### 5. 🌐 多主機節點管理與 4 國語系即時切換
+- 支援 **本機 (Local)**、**SSH 免密直連 (`run_ssh.py`)** 與 **跳板連線 (`jump_ssh.py`)**，即時檢測連線狀態。
+- 內建 **繁體中文 (`zh-TW`)、簡體中文 (`zh-CN`)、English (`en-US`)、日本語 (`ja-JP`)** 完整 322 詞條字典，切換語言瞬間全版塊動態重繪。
 
-### 2. 配置主機節點
-複製節點範本設定：
-```bash
-cp nodes.example.json nodes.json
-```
-編輯 nodes.json 設定您的主機連線。此檔案已納入 .gitignore，確保內部 IP 與連線資訊不被外洩。
-
-### 3. 啟動應用
-以原生應用程式視窗啟動：
-```bash
-npm start
-```
-或僅啟動 HTTP 伺服器服務 (監聽 http://127.0.0.1:5210)：
-```bash
-npm run server
-```
+### 6. 🔌 內建標準 MCP Server（支援 Stdio 與 HTTP 雙協定）
+- 內建 **16 個 `opencodemgr_*` MCP 工具** 與動態資源，可掛載至 OpenCode、Antigravity、Claude Desktop 或 Cursor，讓 AI 直接查詢與管理各節點配置與對話庫。
 
 ---
 
-## 系統架構
+## 模組化架構總覽
 
-- 後端服務 (server.mjs)：以原生 Node.js HTTP 實作，零厚重框架相依。
-- 前端面板：輕量高反應暗色主題介面，支援零延遲 DOM 動態 i18n 渲染。
-- 資料庫引擎 (db_helper.py)：高性能 Python SQLite 輔助模組，支援跨平台路徑解析、Subagent 關聯樹建構與 deep JSON payload 瘦身。
-- 視窗包裝器 (app.mjs)：呼叫本機應用模式 (Edge / Chrome) 提供近乎原生桌面應用的使用體驗。
+```text
+OpenCodeMgr/
+├── app.mjs                      # 桌面視窗與服務啟動器（支援 --server-only 背景守護模式）
+├── server.mjs                   # 輕量化 HTTP 伺服器入口 (Port 5210)
+├── mcp-server.mjs               # 獨立 Stdio MCP Server 入口 (JSON-RPC 2.0)
+├── i18n.mjs                     # 四國語系完整字典模組 (322 詞條：zh-TW / zh-CN / en-US / ja-JP)
+├── db_helper.py                 # 跨平台 Python SQLite 與 Models.dev 目錄解析引擎
+├── Launcher.cs                  # Windows 原生 .exe 啟動器源碼（自動最大化獨立視窗）
+├── src/
+│   ├── core/
+│   │   ├── node-transport.mjs   # 本機 FS、Paramiko SSH、Jump SSH 與安全備份底層
+│   │   └── parsers.mjs          # JSONC 解析、Agent Frontmatter、trim-tools 與插件範圍包裝器
+│   ├── services/
+│   │   └── manager-service.mjs  # 純業務邏輯服務層（同時供 REST API 與 MCP Server 共用）
+│   ├── api/
+│   │   └── router.mjs           # HTTP REST API (/api/*)、HTTP MCP (/mcp) 與靜態路由
+│   └── mcp/
+│       └── mcp-server.mjs       # 16 個 MCP 工具定義、資源處理器與雙模式 Stdio 解析器
+└── public/
+    ├── index.html               # 解耦之前端介面結構
+    ├── styles.css               # 暗色主題與模糊搜尋下拉組件樣式
+    └── app.js                   # 前端應用邏輯控制器
+```
+
+---
+
+## 快速開始
+
+### 1. 啟動桌面 GUI 或 Web 服務
+- **Windows 桌面版**：直接雙擊執行 **`OpenCode Manager.exe`**（自動啟動背景服務並以最大化原生 App 視窗開啟）。
+- **指令列啟動**：
+  ```bash
+  # 啟動伺服器並開啟桌面視窗
+  npm start
+
+  # 僅啟動背景 HTTP 伺服器 (http://127.0.0.1:5210)
+  npm run server
+  ```
+
+### 2. 在 `opencode.jsonc` 掛載 MCP Server
+```json
+{
+  "mcp": {
+    "opencodemgr": {
+      "type": "local",
+      "command": ["node", "C:\\Users\\馮\\.config\\opencode\\opencode-manager\\mcp-server.mjs"],
+      "enabled": true,
+      "timeout": 60000
+    }
+  }
+}
+```
 
 ---
 
 ## 授權條款
 
-MIT License. 詳細資訊請見 LICENSE 文件。
+MIT License. 詳見 [LICENSE](LICENSE)。

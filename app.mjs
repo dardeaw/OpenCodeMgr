@@ -7,6 +7,7 @@ import fs from 'node:fs';
 
 const PORT = 5210;
 const APP_URL = `http://127.0.0.1:${PORT}`;
+const SERVER_ONLY = process.argv.includes('--server-only');
 
 function checkServerRunning() {
   return new Promise((resolve) => {
@@ -20,6 +21,8 @@ function checkServerRunning() {
 }
 
 function openAppWindow() {
+  if (SERVER_ONLY) return;
+
   const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
   const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
   const chromePathUser = path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe');
@@ -32,14 +35,7 @@ function openAppWindow() {
   if (targetExe) {
     console.log('[OpenCode Manager] Launching App Window with:', targetExe);
     try {
-      const appDataDir = path.join(process.env.LOCALAPPDATA || 'C:\\temp', 'OpenCodeMgr_App');
-      const p = spawn(targetExe, [
-        `--app=${APP_URL}`,
-        '--start-maximized',
-        '--window-position=0,0',
-        '--window-size=1920,1080',
-        `--user-data-dir=${appDataDir}`
-      ], {
+      const p = spawn(targetExe, [`--app=${APP_URL}`, '--start-maximized'], {
         detached: true,
         stdio: 'ignore'
       });
@@ -50,7 +46,6 @@ function openAppWindow() {
     }
   }
 
-  // Fallback to default browser
   console.log('[OpenCode Manager] Launching default browser...');
   exec(`explorer "${APP_URL}"`);
 }
@@ -64,7 +59,6 @@ async function main() {
     return;
   }
 
-  // Start HTTP server
   await startServer();
   openAppWindow();
 

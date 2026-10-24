@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenCode Manager</title>
+  <link rel="stylesheet" href="/styles.css">
+
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading" data-i18n="connecting">連線同步中...</div>
+
+  <header>
+    <div class="logo-area">
+      <h1>OpenCode Manager</h1>
+      <span class="badge">v1.4.0</span>
+      
+      <!-- Dynamic Node Selector -->
+      <div class="node-bar">
+        <div class="status-dot" id="node-status-dot"></div>
+        <select class="node-select" id="node-selector" onchange="switchNode(this.value)">
+          <option value="local">💻 本機 (.102)</option>
+        </select>
+        <button class="btn btn-sm" onclick="openNodeManagerModal()" data-i18n="manageNodes">⚙️ 管理主機</button>
+      </div>
+
+      <span class="badge" id="host-badge" style="color: #38bdf8;">192.168.68.102</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <select id="lang-selector" class="node-select" onchange="changeLanguage(this.value)" style="padding: 5px 8px; font-size: 12px; background: #13151b; border: 1px solid var(--border); border-radius: 5px; color: var(--text);">
+        <option value="zh-TW">繁體中文</option>
+        <option value="zh-CN">简体中文</option>
+        <option value="en-US">English</option>
+        <option value="ja-JP">日本語</option>
+      </select>
+      <button class="btn btn-primary" id="btn-reload-all" onclick="reloadAll()" data-i18n="refresh">🔄 重新整理</button>
+    </div>
+  </header>
+
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('sessions')" data-i18n="tabSessions">💬 對話記錄</button>
+    <button class="tab-btn" onclick="switchTab('system-prompts')" data-i18n="tabPrompts">📋 系統提示詞</button>
+    <button class="tab-btn" onclick="switchTab('agents')" data-i18n="tabAgents">🤖 角色管理</button>
+    <button class="tab-btn" onclick="switchTab('mcp')" data-i18n="tabMcp">🔌 MCP 伺服器</button>
+    <button class="tab-btn" onclick="switchTab('plugins')" data-i18n="tabPlugins">🧩 插件管理</button>
+    <button class="tab-btn" onclick="switchTab('tools')" data-i18n="tabTools">🛠️ 工具與權限</button>
+    <button class="tab-btn" onclick="switchTab('raw-json')" data-i18n="tabRawJson">📄 原始設定檔</button>
+    <button class="tab-btn" onclick="switchTab('models')" data-i18n="tabModels">🧠 模型與供應商</button>
+  </nav>
+
+  <main>
+    <!-- 0. Session Manager Tab -->
+    <div id="sessions" class="tab-pane active">
+      <!-- Database Stats -->
+      <div class="stats-container">
+        <div class="stat-card">
+          <div class="stat-lbl" data-i18n="statDbSize">SQLite 庫容量</div>
+          <div class="stat-val" id="stat-db-size">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl" data-i18n="statWalSize">WAL 暫存佔用</div>
+          <div class="stat-val" id="stat-wal-size">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl" data-i18n="statSessions">總 Session 數</div>
+          <div class="stat-val" id="stat-sessions">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl" data-i18n="statMessages">Messages 筆數</div>
+          <div class="stat-val" id="stat-messages">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl" data-i18n="statParts">Parts (細部歷程)</div>
+          <div class="stat-val" id="stat-parts">-</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span data-i18n="workspaceTitle">Workspace 對話管理</span>
+            <select id="session-workspace-filter" style="width: 240px; font-size: 12px;" onchange="loadSessions()">
+              <option value="all" data-i18n="allWorkspaces">全部工作區</option>
+            </select>
+            <div style="display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: #090a0d;">
+              <button id="btn-view-tree" class="btn btn-sm" style="background: rgba(56,189,248,0.2); color: #38bdf8; border: none; border-radius: 0; padding: 4px 10px; font-weight: 600;" onclick="switchSessionViewMode('tree')" data-i18n="viewTree">🗂️ 樹狀歸集</button>
+              <button id="btn-view-flat" class="btn btn-sm" style="background: transparent; color: var(--text-muted); border: none; border-radius: 0; padding: 4px 10px;" onclick="switchSessionViewMode('flat')" data-i18n="viewFlat">📋 平鋪清單</button>
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-sm" onclick="runVacuum()" data-i18n="vacuumBtn">🧹 壓縮重整資料庫</button>
+            <button class="btn btn-sm btn-primary" onclick="loadSessions()" data-i18n="refreshList">🔄 刷新列表</button>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="session-table">
+            <thead>
+              <tr>
+                <th data-i18n="colTitle">對話標題 / ID</th>
+                <th data-i18n="colWorkspace">工作區路徑</th>
+                <th data-i18n="colModel">使用模型</th>
+                <th data-i18n="colUpdated">最後更新</th>
+                <th data-i18n="colSize">佔用空間</th>
+                <th data-i18n="colCounts">訊息 / 細項</th>
+                <th data-i18n="colTokens">Token 總計</th>
+                <th style="text-align: right;" data-i18n="colActions">操作</th>
+              </tr>
+            </thead>
+            <tbody id="session-tbody">
+              <tr><td colspan="8" style="text-align: center; color: var(--text-muted);" data-i18n="loading">載入中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 0.5 Models & Providers Tab -->
+    <div id="models" class="tab-pane">
+      <!-- Global Active Model Assignment Card (Matches /models in OpenCode) -->
+      <div class="card">
+        <div class="card-title">
+          <span data-i18n="globalActiveModelsTitle">全域預設模型指派 (Global Model Assignment - 對應 /models)</span>
+          <button class="btn btn-primary btn-sm" onclick="saveGlobalModelAssignment()" data-i18n="saveGlobalModels">💾 儲存全域模型指派</button>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label data-i18n="primaryModelLbl">主要對話模型 (Primary Model - model)</label>
+            <input type="text" id="global-primary-model" list="available-models-datalist" placeholder="provider/model-id (e.g. gufo/gufo-qwen3.8-flash-next)">
+          </div>
+          <div class="col">
+            <label data-i18n="smallModelLbl">輕量輔助模型 (Small Model - small_model)</label>
+            <input type="text" id="global-small-model" list="available-models-datalist" placeholder="provider/model-id">
+          </div>
+        </div>
+        <div class="row" style="margin-bottom: 0;">
+          <div class="col">
+            <label data-i18n="titleModelLbl">對話自動命名模型 (Title Agent - agent.title.model)</label>
+            <input type="text" id="global-title-model" list="available-models-datalist" placeholder="openai/gpt-5.6-luna">
+          </div>
+          <div class="col">
+            <label data-i18n="compactionModelLbl">上下文壓縮模型 (Compaction Agent - agent.compaction.model)</label>
+            <input type="text" id="global-compaction-model" list="available-models-datalist" placeholder="meta/muse-spark-1.3-contributor">
+          </div>
+        </div>
+        <datalist id="available-models-datalist"></datalist>
+      </div>
+
+      <!-- Providers Header & Quick Connect -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+        <h2 style="font-size: 14px; font-weight: 600;" data-i18n="providersListTitle">供應商管理 (Providers - 對應 /connect 與 opencode.jsonc)</h2>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-sm" style="border-color: #818cf8; color: #818cf8;" onclick="openQuickConnectBuiltin('opencode')">✨ OpenCode Zen</button>
+          <button class="btn btn-sm" style="border-color: #38bdf8; color: #38bdf8;" onclick="openQuickConnectBuiltin('opencode-go')">🚀 OpenCode Go</button>
+          <button class="btn btn-sm" onclick="openCatalogBrowserModal('')" data-i18n="connectBuiltinProvider">🔗 連接內建供應商 (/connect)</button>
+          <button class="btn btn-primary btn-sm" onclick="createNewProvider()" data-i18n="addCustomProvider">➕ 新增自訂 Provider</button>
+        </div>
+      </div>
+
+      <!-- Provider Grid -->
+      <div class="agent-grid" id="provider-list"></div>
+
+      <!-- Provider & Sub-Models Editor Card -->
+      <div class="card" id="provider-editor" style="display: none; border-color: #38bdf8;">
+        <div class="card-title">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="provider-editor-title" style="color: #38bdf8; font-size: 15px;" data-i18n="editProviderTitle">編輯供應商與旗下模型</span>
+            <span id="provider-editor-badge" class="badge"></span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-danger btn-sm" id="btn-delete-provider" onclick="deleteCurrentProvider()" data-i18n="deleteProviderBtn">🗑️ 移除此 Provider</button>
+            <button class="btn btn-primary btn-sm" onclick="saveCurrentProvider()" data-i18n="saveProviderBtn">💾 儲存 Provider 設定</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label data-i18n="providerIdLbl">供應商 ID (Provider Key，如 gufo, opencode, opencode-go, openai)</label>
+            <input type="text" id="prov-id" placeholder="gufo" list="catalog-providers-datalist">
+            <datalist id="catalog-providers-datalist"></datalist>
+          </div>
+          <div class="col">
+            <label data-i18n="providerNameLbl">顯示名稱 (Display Name)</label>
+            <input type="text" id="prov-name" placeholder="gufo flash-next (55:8741)">
+          </div>
+          <div class="col">
+            <label data-i18n="providerNpmLbl">AI SDK 驅動套件 (npm package)</label>
+            <input type="text" id="prov-npm" list="npm-packages-datalist" placeholder="@ai-sdk/openai-compatible">
+            <datalist id="npm-packages-datalist">
+              <option value="@ai-sdk/openai-compatible" data-i18n="sdkOpenaiCompat">OpenAI 相容介面 (llama.cpp / vLLM / gufo / strata)</option>
+              <option value="@ai-sdk/openai" data-i18n="sdkOpenai">OpenAI 官方 (@ai-sdk/openai)</option>
+              <option value="@ai-sdk/anthropic" data-i18n="sdkAnthropic">Anthropic 官方 (@ai-sdk/anthropic)</option>
+              <option value="@ai-sdk/google" data-i18n="sdkGoogle">Google Gemini (@ai-sdk/google)</option>
+              <option value="@ai-sdk/google-vertex" data-i18n="sdkVertex">Google Vertex AI (@ai-sdk/google-vertex)</option>
+              <option value="@openrouter/ai-sdk-provider" data-i18n="sdkOpenrouter">OpenRouter (@openrouter/ai-sdk-provider)</option>
+            </datalist>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label data-i18n="providerBaseUrlLbl">API 端點網址 (options.baseURL)</label>
+            <input type="text" id="prov-baseurl" placeholder="http://192.168.68.55:8741/v1">
+          </div>
+          <div class="col">
+            <label data-i18n="providerApiKeyJsoncLbl">設定檔 API Key (options.apiKey in opencode.jsonc，選填)</label>
+            <input type="password" id="prov-apikey-jsonc" data-i18n-placeholder="providerApiKeyJsoncPh" placeholder="選填，明文寫入 opencode.jsonc" onfocus="this.type='text'" onblur="this.type='password'">
+          </div>
+        </div>
+
+        <!-- Global /connect auth.json Credential Bar -->
+        <div style="background: #090a0d; border: 1px solid #1e293b; border-radius: 6px; padding: 12px 14px; margin-bottom: 14px;">
+          <label style="color: #a78bfa; margin-bottom: 6px;" data-i18n="providerAuthKeyLbl">全域認證金鑰 (/connect auth.json Key，優先推薦)</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="password" id="prov-auth-key" data-i18n-placeholder="providerAuthKeyPh" placeholder="輸入金鑰 (如 oc_sk_... 或 sk-...)" style="flex: 1;" onfocus="this.type='text'" onblur="this.type='password'">
+            <button class="btn btn-sm" style="background: rgba(167, 139, 250, 0.15); color: #c4b5fd; border-color: rgba(167, 139, 250, 0.35); white-space: nowrap;" onclick="saveProviderAuthKey()" data-i18n="saveAuthKeyBtn">🔑 寫入 auth.json</button>
+          </div>
+          <div id="prov-auth-status" style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono);"></div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label data-i18n="providerWhitelistLbl">模型白名單 (whitelist，逗號分隔，留空不限制)</label>
+            <input type="text" id="prov-whitelist" placeholder="gpt-5, deepseek-v4-flash-free">
+          </div>
+          <div class="col">
+            <label data-i18n="providerBlacklistLbl">模型黑名單 (blacklist，逗號分隔)</label>
+            <input type="text" id="prov-blacklist" placeholder="claude-opus-5-5">
+          </div>
+        </div>
+
+        <!-- Sub-Models Management under this Provider -->
+        <div style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 13.5px; font-weight: 600; color: var(--primary);" data-i18n="subModelsTitle">旗下模型清單與參數調優 (Models under Provider)</span>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-sm" id="btn-browse-catalog-models" style="border-color: #38bdf8; color: #38bdf8;" onclick="openCatalogForCurrentProvider()" data-i18n="importCatalogBtn">📥 從官方目錄匯入/檢視模型 (Models.dev Catalog)</button>
+              <button class="btn btn-primary btn-sm" onclick="openSubModelEditor(null)" data-i18n="addModelBtn">➕ 手動新增模型</button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="session-table" id="submodels-table">
+              <thead>
+                <tr>
+                  <th data-i18n="colModelId">模型 ID</th>
+                  <th data-i18n="colModelName">顯示名稱</th>
+                  <th data-i18n="colModelLimits">上下文 / 輸出上限</th>
+                  <th data-i18n="colModelModalities">輸入模態</th>
+                  <th data-i18n="colModelParams">溫度 / 推論參數</th>
+                  <th style="text-align: right;" data-i18n="colActions">操作</th>
+                </tr>
+              </thead>
+              <tbody id="submodels-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Sub-Model Inline Editor -->
+          <div id="submodel-editor" style="display: none; background: #090a0d; border: 1px solid var(--primary); border-radius: 6px; padding: 14px; margin-top: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <span style="font-size: 13px; font-weight: 600; color: var(--primary);" data-i18n="editModelTitle">模型詳細參數配置 (Model Spec)</span>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-sm" onclick="document.getElementById('submodel-editor').style.display='none'" data-i18n="cancelBtn">取消</button>
+                <button class="btn btn-primary btn-sm" onclick="applySubModelChanges()" data-i18n="applyModelBtn">✓ 套用至清單</button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label data-i18n="modelIdLbl">模型 ID (Model Key，如 gufo-qwen3.8-flash-next)</label>
+                <input type="text" id="sm-id" placeholder="gufo-qwen3.8-flash-next">
+              </div>
+              <div class="col">
+                <label data-i18n="modelNameLbl">模型顯示名稱 (Display Name)</label>
+                <input type="text" id="sm-name" placeholder="gufo qwen3.8-flash-next (262K, vision)">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label data-i18n="modelCtxLimitLbl">上下文視窗上限 (limit.context)</label>
+                <input type="number" id="sm-context" placeholder="262144">
+              </div>
+              <div class="col">
+                <label data-i18n="modelInputLimitLbl">最大輸入 Token (limit.input，選填)</label>
+                <input type="number" id="sm-input" placeholder="262144">
+              </div>
+              <div class="col">
+                <label data-i18n="modelOutputLimitLbl">最大輸出 Token (limit.output)</label>
+                <input type="number" id="sm-output" placeholder="8192">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label data-i18n="modelTempLbl">預設溫度 (options.temperature，選填)</label>
+                <input type="number" step="0.05" id="sm-temp" placeholder="0.4">
+              </div>
+              <div class="col">
+                <label data-i18n="modelReasoningEffortLbl">推論強度 (options.reasoningEffort，如 low/medium/high/max)</label>
+                <select id="sm-effort">
+                  <option value="" data-i18n="effortDefault">不指定</option>
+                  <option value="minimal">minimal</option>
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                  <option value="max">max</option>
+                </select>
+              </div>
+              <div class="col">
+                <label data-i18n="modelAttachmentLbl">支援附件與圖片上傳</label>
+                <select id="sm-attachment">
+                  <option value="true" data-i18n="boolTrue">是 (true)</option>
+                  <option value="false" data-i18n="boolFalse">否 (false)</option>
+                </select>
+              </div>
+              <div class="col">
+                <label data-i18n="modelModalitiesInputLbl">支援輸入模態 (modalities.input)</label>
+                <input type="text" id="sm-modalities" placeholder="text, image">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. System Prompts -->
+    <div id="system-prompts" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span id="prompt-local-title"><span data-i18n="promptMainTitle">主要系統提示詞 (AGENTS.local.md)</span></span>
+          <button class="btn btn-primary" onclick="savePrompt('local')" data-i18n="saveMainPrompt">💾 儲存主要提示詞</button>
+        </div>
+        <textarea id="prompt-local" style="height: 380px;"></textarea>
+      </div>
+
+      <div class="card" id="card-ssh-prompt" style="display: none;">
+        <div class="card-title">
+          <span><span data-i18n="promptSshTitle">遠端 SSH 工作流規範 (SSH_WORKFLOW.md)</span></span>
+          <button class="btn btn-primary" onclick="savePrompt('ssh')" data-i18n="saveSshPrompt">💾 儲存 SSH 規範</button>
+        </div>
+        <textarea id="prompt-ssh" style="height: 220px;"></textarea>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span><span data-i18n="promptGlobalTitle">全域通用規範 (AGENTS.md)</span></span>
+          <button class="btn btn-primary" onclick="savePrompt('global')" data-i18n="saveGlobalPrompt">💾 儲存全域規範</button>
+        </div>
+        <textarea id="prompt-global" style="height: 180px;"></textarea>
+      </div>
+    </div>
+
+    <!-- 2. Agents -->
+    <div id="agents" class="tab-pane">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h2 style="font-size: 14px;" id="agent-list-title" data-i18n="customAgentsTitle">自訂代理角色</h2>
+        <button class="btn btn-primary" onclick="createNewAgent()" data-i18n="addAgent">➕ 新增角色</button>
+      </div>
+
+      <div class="agent-grid" id="agent-list"></div>
+
+      <!-- Agent Editor -->
+      <div class="card" id="agent-editor" style="display: none;">
+        <div class="card-title">
+          <span id="agent-editor-title" data-i18n="editAgent">編輯角色</span>
+          <div>
+            <button class="btn btn-danger" id="btn-delete-agent" onclick="deleteCurrentAgent()" data-i18n="deleteAgent">🗑️ 刪除角色</button>
+            <button class="btn btn-primary" onclick="saveCurrentAgent()" data-i18n="saveAgent">💾 儲存角色設定</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label data-i18n="agentId">角色 ID (檔案名，如 llm-engineer)</label>
+            <input type="text" id="agent-id" placeholder="my-agent">
+          </div>
+          <div class="col">
+            <label data-i18n="agentMode">執行模式 (Mode)</label>
+            <select id="agent-mode">
+              <option value="all" data-i18n="modeAll">主對話與子代理通用 (all)</option>
+              <option value="subagent" data-i18n="modeSubagent">僅作為子代理 (subagent)</option>
+              <option value="primary" data-i18n="modePrimary">僅作為主對話 (primary)</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="agentModel">指定模型 (Model Override)</label>
+            <input type="text" id="agent-model" placeholder="opencode/deepseek-v4-flash-free">
+          </div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label data-i18n="agentDesc">角色職責簡介（供主模型判斷何時委派）</label>
+          <input type="text" id="agent-desc" data-i18n-placeholder="agentDescPh" placeholder="簡述角色專長與自動觸發時機">
+        </div>
+
+        <!-- Dedicated Agent Tool Permissions -->
+        <div style="background: #090a0d; border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--accent);" data-i18n="agentToolsTitle">專屬 Tools 與權限分配 (Agent Tool Permissions)</span>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-sm" type="button" onclick="applyAgentToolPreset('readonly')" data-i18n="presetReadOnly">⚡ 唯讀審查模式 (禁止改檔/終端)</button>
+              <button class="btn btn-sm" type="button" onclick="applyAgentToolPreset('fulldev')" data-i18n="presetFullDev">⚡ 全功能開發模式 (全部允許)</button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-bottom: 12px;">
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolEdit">修改檔案 (edit / write)</label>
+              <select id="agent-perm-edit" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolBash">終端指令 (bash / shell)</label>
+              <select id="agent-perm-bash" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolRead">讀取檔案 (read)</label>
+              <select id="agent-perm-read" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolSearch">檢索搜尋 (grep / glob)</label>
+              <select id="agent-perm-search" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolTask">委派子任務 (task / subagent)</label>
+              <select id="agent-perm-task" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+            <div style="background: #13151b; border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;">
+              <label style="margin-bottom: 4px;" data-i18n="agentToolWeb">聯網搜尋 (websearch / webfetch)</label>
+              <select id="agent-perm-web" style="padding: 4px 8px; font-size: 12px;">
+                <option value="inherit" data-i18n="permInherit">繼承全域 (inherit)</option>
+                <option value="allow" data-i18n="permAllow">允許 (allow)</option>
+                <option value="ask" data-i18n="permAsk">詢問確認 (ask)</option>
+                <option value="deny" data-i18n="permDeny">禁止 (deny)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style="margin-bottom: 4px;" data-i18n="agentToolCustom">自訂指令/資源規則 (每行一個，如 git *: allow 或 mcp_*: deny)</label>
+            <textarea id="agent-perm-custom" style="min-height: 50px; height: 55px; font-size: 12px;" placeholder="'git *': allow&#10;'rm *': deny"></textarea>
+          </div>
+        </div>
+
+        <!-- Per-Agent Plugin Assignment -->
+        <div style="background: #090a0d; border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 13px; font-weight: 600; color: #a78bfa;" data-i18n="agentPluginsTitle">🧩 角色專屬插件啟停分配</span>
+            <span style="font-size: 11.5px; color: var(--text-muted);" data-i18n="agentPluginsHint">勾選代表此角色執行時啟用該插件；取消勾選代表此角色自動跳過該插件</span>
+          </div>
+          <div id="agent-plugins-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px;"></div>
+        </div>
+
+        <div>
+          <label data-i18n="agentPrompt">角色系統提示詞 (System Prompt)</label>
+          <textarea id="agent-prompt" style="height: 320px;"></textarea>
+        </div>
+      </div>
+
+      <!-- Core Agents Config -->
+      <div class="card">
+        <div class="card-title">
+          <span data-i18n="coreConfig">系統內建代理設定</span>
+          <button class="btn btn-primary" onclick="saveCoreAgents()" data-i18n="saveCoreConfig">💾 儲存內建代理設定</button>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label data-i18n="compactionModel">對話接續壓縮角色 (Compaction Model)</label>
+            <input type="text" id="compaction-model">
+          </div>
+          <div class="col">
+            <label data-i18n="titleModel">對話命名角色 (Title Model)</label>
+            <input type="text" id="title-model">
+          </div>
+        </div>
+        <div>
+          <label data-i18n="compactionPrompt">對話接續壓縮提示詞 (Compaction Prompt)</label>
+          <textarea id="compaction-prompt" style="height: 100px;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. MCP -->
+    <div id="mcp" class="tab-pane">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h2 style="font-size: 14px;" data-i18n="mcpListTitle">MCP 擴充伺服器</h2>
+        <button class="btn btn-primary" onclick="addNewMcp()" data-i18n="addMcp">➕ 新增 MCP 伺服器</button>
+      </div>
+
+      <div class="mcp-grid" id="mcp-list"></div>
+
+      <!-- MCP Editor -->
+      <div class="card" id="mcp-editor" style="display: none;">
+        <div class="card-title">
+          <span id="mcp-editor-title" data-i18n="editMcp">編輯 MCP 伺服器</span>
+          <div>
+            <button class="btn btn-danger" onclick="deleteCurrentMcp()" data-i18n="deleteMcp">🗑️ 刪除</button>
+            <button class="btn btn-primary" onclick="saveCurrentMcp()" data-i18n="saveMcp">💾 儲存設定</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label data-i18n="mcpName">伺服器名稱 (ID)</label>
+            <input type="text" id="mcp-id" placeholder="docgraph">
+          </div>
+          <div class="col">
+            <label data-i18n="mcpType">傳輸類型 (Type)</label>
+            <select id="mcp-type">
+              <option value="local" data-i18n="typeLocal">本機執行檔 (local)</option>
+              <option value="remote" data-i18n="typeRemote">遠端網址 (remote)</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="mcpStatus">啟用狀態</label>
+            <select id="mcp-enabled">
+              <option value="true" data-i18n="statusEnabled">啟用</option>
+              <option value="false" data-i18n="statusDisabled">停用</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="mcpTimeout">超時時間毫秒 (Timeout)</label>
+            <input type="number" id="mcp-timeout" placeholder="60000">
+          </div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label data-i18n="mcpCommand">執行指令 (Command)</label>
+          <input type="text" id="mcp-command" placeholder="C:Users馮indocgraph.exe 或 npx">
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label data-i18n="mcpArgs">指令參數 (Arguments，以空格分開或 JSON 陣列)</label>
+          <input type="text" id="mcp-args" placeholder='serve --path "..."'>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3.5 Plugins -->
+    <div id="plugins" class="tab-pane">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h2 style="font-size: 14px; font-weight: 600;" data-i18n="pluginsTitle">插件與攔截腳本管理</h2>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 3px;" data-i18n="pluginsSubtitle">
+            管理 plugin/*.js 腳本、啟停狀態、載入順序，並支援依代理角色指派生效範圍。
+          </p>
+        </div>
+        <button class="btn btn-primary" onclick="createNewPlugin()" data-i18n="addPluginBtn">➕ 新增插件 (.js)</button>
+      </div>
+
+      <div class="agent-grid" id="plugin-list"></div>
+
+      <!-- Plugin Editor & Per-Agent Assignment Card -->
+      <div class="card" id="plugin-editor" style="display: none; border-color: #a78bfa;">
+        <div class="card-title">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="plugin-editor-title" style="color: #a78bfa; font-size: 15px;" data-i18n="editPluginTitle">編輯插件與角色分配</span>
+            <span id="plugin-editor-badge" class="badge"></span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-danger btn-sm" id="btn-delete-plugin" onclick="deleteCurrentPlugin()" data-i18n="deletePluginBtn">🗑️ 刪除插件檔案</button>
+            <button class="btn btn-primary btn-sm" onclick="saveCurrentPlugin()" data-i18n="savePluginBtn">💾 儲存插件與角色分配</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label data-i18n="pluginFilenameLbl">插件檔名 (Filename，如 my-guard.js)</label>
+            <input type="text" id="plugin-filename" placeholder="my-guard.js">
+          </div>
+          <div class="col">
+            <label data-i18n="pluginEnabledLbl">全域掛載狀態 (opencode.jsonc plugin 陣列)</label>
+            <select id="plugin-enabled">
+              <option value="true" data-i18n="pluginMountedOpt">🟢 啟用掛載 (寫入 opencode.jsonc)</option>
+              <option value="false" data-i18n="pluginUnmountedOpt">⚪ 停用卸載 (僅保留 .js 檔案)</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="pluginScopeModeLbl">角色生效範圍 (Per-Agent Assignment Mode)</label>
+            <select id="plugin-scope-mode" onchange="onPluginScopeModeChange()">
+              <option value="all" data-i18n="scopeAllAgents">🌐 全部角色通用 (All Agents)</option>
+              <option value="include" data-i18n="scopeIncludeAgents">🎯 僅指定角色生效 (Only Selected Agents)</option>
+              <option value="exclude" data-i18n="scopeExcludeAgents">🚫 排除指定角色 (Bypass on Selected Agents)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Per-Agent Scope Selection Box -->
+        <div id="plugin-scope-agents-box" style="display: none; background: #090a0d; border: 1px solid #a78bfa; border-radius: 6px; padding: 12px 14px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span id="plugin-scope-hint" style="font-size: 12.5px; font-weight: 600; color: #c4b5fd;"></span>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-sm" style="padding: 2px 8px; font-size: 11px;" onclick="toggleAllPluginScopeAgents(true)" data-i18n="selectAllBtn">全選</button>
+              <button type="button" class="btn btn-sm" style="padding: 2px 8px; font-size: 11px;" onclick="toggleAllPluginScopeAgents(false)" data-i18n="deselectAllBtn">全不選</button>
+            </div>
+          </div>
+          <div id="plugin-scope-agents-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px;"></div>
+        </div>
+
+        <div>
+          <label data-i18n="pluginCodeLbl">插件原始碼 (JavaScript ESM Hook)</label>
+          <textarea id="plugin-code" style="height: 360px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Tools -->
+    <div id="tools" class="tab-pane">
+      <div class="card" id="card-trim-tools">
+        <div class="card-title">
+          <span data-i18n="trimToolsDesc">工具系統描述精簡設定 (plugin/trim-tools.js)</span>
+          <button class="btn btn-primary" onclick="saveTools()" data-i18n="saveTrimTools">💾 儲存工具描述</button>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;" data-i18n="trimToolsHint">
+          自訂各工具提供給模型的系統說明，有助於降低 Token 消耗並精準引導模型行為。
+        </p>
+        <div id="tools-container"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span data-i18n="permGuard">終端機危險指令防護 (permission.bash)</span>
+          <button class="btn btn-primary" onclick="savePermissions()" data-i18n="savePermGuard">💾 儲存權限設定</button>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label data-i18n="denyList">Deny 清單 (直接拒絕執行的指令模式，每行一個)</label>
+            <textarea id="perm-deny" style="height: 120px;"></textarea>
+          </div>
+          <div class="col">
+            <label data-i18n="askList">Ask 清單 (必須向使用者確認的指令模式，每行一個)</label>
+            <textarea id="perm-ask" style="height: 120px;"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Raw JSONC -->
+    <div id="raw-json" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span data-i18n="rawJsonTitle">opencode.jsonc 原始設定檔</span>
+          <div>
+            <button class="btn btn-primary" onclick="saveRawJsonc()" data-i18n="saveRawJson">💾 儲存設定檔（自動備份）</button>
+          </div>
+        </div>
+        <textarea id="raw-jsonc-content" style="height: 500px;"></textarea>
+      </div>
+    </div>
+  </main>
+
+  <!-- Full Conversation Detail Modal -->
+  <div class="modal-overlay" id="detail-modal" onclick="closeDetail(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-title" style="font-size: 14px; font-weight: 600; color: #fff;" data-i18n="detailTitle">對話詳細記錄</h3>
+          <span id="modal-meta" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);"></span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input type="text" id="modal-search" data-i18n-placeholder="searchPlaceholder" placeholder="搜尋對話關鍵字..." style="width: 200px; font-size: 12px;" oninput="filterModalContent()">
+          <button class="btn btn-sm" style="border-color: #f59e0b; color: #fbbf24;" onclick="openCleanModalFromDetail()" data-i18n="cleanThisSession">🧹 瘦身此對話</button>
+          <button class="btn btn-sm" onclick="closeDetailModal()" data-i18n="closeBtn">✕ 關閉</button>
+        </div>
+      </div>
+      <div class="modal-body" id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- Manage Nodes Modal -->
+  <div class="modal-overlay" id="node-modal" onclick="closeNodeModal(event)">
+    <div class="node-modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 style="font-size: 14px; font-weight: 600; color: #fff;" data-i18n="nodeModalTitle">⚙️ 主機節點管理</h3>
+        <button class="btn btn-sm" onclick="closeNodeModalDirect()" data-i18n="closeBtn">✕ 關閉</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <span style="font-size: 12px; color: var(--text-muted);" data-i18n="nodeModalDesc">管理 OpenCode 連線主機（支援本機、SSH 免密直連、跳板連線）</span>
+          <button class="btn btn-sm btn-primary" onclick="initNewNodeForm()" data-i18n="addNodeBtn">➕ 新增主機節點</button>
+        </div>
+
+        <div id="node-card-list" style="margin-bottom: 20px;"></div>
+
+        <!-- Node Edit Form -->
+        <div class="card" id="node-edit-card" style="display: none; background: #090a0d;">
+          <div class="card-title">
+            <span id="node-form-title" data-i18n="editNodeTitle">編輯主機</span>
+            <button class="btn btn-sm btn-primary" onclick="saveNodeConfig()" data-i18n="saveNodeBtn">💾 儲存主機</button>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label data-i18n="nodeId">節點 ID (如 remote67)</label>
+              <input type="text" id="edit-node-id" placeholder="remote67">
+            </div>
+            <div class="col">
+              <label data-i18n="nodeName">顯示名稱 (Name)</label>
+              <input type="text" id="edit-node-name" placeholder="🐧 Nobara (.67)">
+            </div>
+            <div class="col">
+              <label data-i18n="nodeType">連線類型 (Type)</label>
+              <select id="edit-node-type">
+                <option value="ssh" data-i18n="nodeTypeSsh">SSH 直連</option>
+                <option value="local" data-i18n="nodeTypeLocal">本機 (Local)</option>
+                <option value="jump" data-i18n="nodeTypeJump">跳板連線 (Jump SSH)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label data-i18n="nodeIp">IP 位址 / 主機名</label>
+              <input type="text" id="edit-node-ip" placeholder="192.168.68.67">
+            </div>
+            <div class="col">
+              <label data-i18n="nodeUser">SSH 登入帳號 (User)</label>
+              <input type="text" id="edit-node-user" placeholder="nobara-user">
+            </div>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label data-i18n="nodeConfigDir">OpenCode 配置目錄路徑 (Config Directory)</label>
+            <input type="text" id="edit-node-config" placeholder="/home/nobara-user/.config/opencode">
+          </div>
+
+          <div>
+            <label data-i18n="nodeDbPath">OpenCode SQLite 資料庫路徑 (DB Path)</label>
+            <input type="text" id="edit-node-db" placeholder="/home/nobara-user/.local/share/opencode/opencode.db">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clean Session Modal -->
+  <div class="modal-overlay" id="clean-modal" onclick="closeCleanModalOverlay(event)">
+    <div class="node-modal-box" style="max-width: 560px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 style="font-size: 14px; font-weight: 600; color: #fbbf24;" data-i18n="cleanModalTitle">🧹 對話瘦身與冗餘清理</h3>
+        <button class="btn btn-sm" onclick="closeCleanModal()" data-i18n="closeBtn">✕ 關閉</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          <span data-i18n="cleanTarget">目標對話：</span><span id="clean-session-title" style="color: #fff; font-weight: 600;"></span>
+          <div id="clean-session-id" style="font-size: 11px; color: #64748b; font-family: var(--font-mono); margin-top: 2px;"></div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-weight: 600; font-size: 13px; color: #f8fafc; text-transform: none;" data-i18n="cleanSelectItems">選擇要清理的項目：</div>
+            <button class="btn btn-sm" style="font-size: 11px; padding: 3px 8px; border-color: #38bdf8; color: #38bdf8;" onclick="applyCleanDefaults()" data-i18n="applyPresetBtn">✨ 套用推薦預設</button>
+          </div>
+          
+          <label style="display: flex; align-items: flex-start; padding: 10px 14px; margin-bottom: 8px; background: #0c0e14; border: 1px solid #1e293b; border-radius: 6px; cursor: pointer; text-transform: none;">
+            <input type="checkbox" id="clean-opt-errors" onchange="saveCleanPreferences()" style="width: 18px !important; min-width: 18px !important; max-width: 18px !important; height: 18px !important; margin: 2px 14px 0 0 !important; flex: 0 0 18px !important; accent-color: #f59e0b; cursor: pointer;">
+            <div style="flex: 1; text-transform: none;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #f87171; margin-bottom: 3px;">
+                <span data-i18n="optErrors">🚫 工具失敗與外掛攔截記錄</span>
+                <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; background: rgba(56,189,248,0.2); color: #38bdf8;" data-i18n="badgeRecommended">推薦</span>
+              </div>
+              <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.45;"><span data-i18n="optErrorsDesc">清理指令異常 (Non-0 Exit)、外掛防護攔截 (Plugin Rejections)、找不到檔案與中途卡死 (Running) 等失敗記錄。</span></div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; padding: 10px 14px; margin-bottom: 8px; background: #0c0e14; border: 1px solid #1e293b; border-radius: 6px; cursor: pointer; text-transform: none;">
+            <input type="checkbox" id="clean-opt-reasoning" onchange="saveCleanPreferences()" style="width: 18px !important; min-width: 18px !important; max-width: 18px !important; height: 18px !important; margin: 2px 14px 0 0 !important; flex: 0 0 18px !important; accent-color: #f59e0b; cursor: pointer;">
+            <div style="flex: 1; text-transform: none;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #c084fc; margin-bottom: 3px;">
+                <span data-i18n="optReasoning">🧠 模型思考歷程 (Reasoning / CoT)</span>
+                <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; background: rgba(192,132,252,0.2); color: #c084fc;" data-i18n="badgeReasoning">強力推薦</span>
+              </div>
+              <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.45;"><span data-i18n="optReasoningDesc">清除模型的大段思維鏈 (&lt;think&gt;)。保留所有問答與代碼成果，大幅節省 40%~60% 空間！</span></div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; padding: 10px 14px; margin-bottom: 8px; background: #0c0e14; border: 1px solid #1e293b; border-radius: 6px; cursor: pointer; text-transform: none;">
+            <input type="checkbox" id="clean-opt-outputs" onchange="saveCleanPreferences()" style="width: 18px !important; min-width: 18px !important; max-width: 18px !important; height: 18px !important; margin: 2px 14px 0 0 !important; flex: 0 0 18px !important; accent-color: #f59e0b; cursor: pointer;">
+            <div style="flex: 1; text-transform: none;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #38bdf8; margin-bottom: 3px;">
+                <span data-i18n="optLargeOutput">📜 超長工具輸出瘦身 (Truncate Large Outputs)</span>
+                <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; background: rgba(56,189,248,0.2); color: #38bdf8;"><span data-i18n="badgeLargeOutput">推薦 (含Metadata)</span></span>
+              </div>
+              <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.45;"><span data-i18n="optLargeOutputDesc">保留工具指令名稱與狀態，但將超過 1,500 字元的超長日誌/檔案 dump 截斷並保留摘要。</span></div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; padding: 10px 14px; margin-bottom: 8px; background: #0c0e14; border: 1px solid #1e293b; border-radius: 6px; cursor: pointer; text-transform: none;">
+            <input type="checkbox" id="clean-opt-files" onchange="saveCleanPreferences()" style="width: 18px !important; min-width: 18px !important; max-width: 18px !important; height: 18px !important; margin: 2px 14px 0 0 !important; flex: 0 0 18px !important; accent-color: #f59e0b; cursor: pointer;">
+            <div style="flex: 1; text-transform: none;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #fbbf24; margin-bottom: 3px;">
+                <span data-i18n="optSnapshots">📁 暫存大型檔案快照</span>
+                <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; background: rgba(251,191,36,0.2); color: #fbbf24;" data-i18n="badgeSnapshots">推薦</span>
+              </div>
+              <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.45;"><span data-i18n="optSnapshotsDesc">清除附掛在對話中的全量暫存檔案副本（單筆可達數 MB）。</span></div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; padding: 10px 14px; margin-bottom: 0; background: #0c0e14; border: 1px solid #1e293b; border-radius: 6px; cursor: pointer; text-transform: none;">
+            <input type="checkbox" id="clean-opt-steps" onchange="saveCleanPreferences()" style="width: 18px !important; min-width: 18px !important; max-width: 18px !important; height: 18px !important; margin: 2px 14px 0 0 !important; flex: 0 0 18px !important; accent-color: #f59e0b; cursor: pointer;">
+            <div style="flex: 1; text-transform: none;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 3px;">
+                <span data-i18n="optStepMarkers">🏷️ 步驟分隔標記</span>
+                <span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; background: rgba(148,163,184,0.2); color: #94a3b8;" data-i18n="badgeSteps">推薦</span>
+              </div>
+              <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.45;"><span data-i18n="optStepMarkersDesc">清除純 UI 步驟分隔符號，減少幾千筆無意義的資料庫 row。</span></div>
+            </div>
+          </label>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); cursor: pointer; text-transform: none; margin-bottom: 0;">
+            <input type="checkbox" id="clean-opt-vacuum" onchange="saveCleanPreferences()"> <span data-i18n="optVacuum">清理後自動壓縮資料庫 (VACUUM)</span>
+          </label>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="closeCleanModal()" data-i18n="cancelBtn">取消</button>
+            <button class="btn" style="background: linear-gradient(135deg, #d97706, #b45309); color: #fff; border: none; font-weight: 600;" onclick="executeCleanSession()" data-i18n="execCleanBtn">⚡ 立即執行瘦身</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Official Catalog Browser Modal (Models.dev / Zen / Go) -->
+  <div class="modal-overlay" id="catalog-modal" onclick="if(event.target.id==='catalog-modal')this.style.display='none'">
+    <div class="modal-box" style="max-width: 960px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size: 15px; font-weight: 600; color: #38bdf8;" data-i18n="catalogModalTitle">📚 OpenCode 官方模型目錄 (Models.dev / Zen / Go 內建清單)</h3>
+          <span id="catalog-modal-subtitle" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);"></span>
+        </div>
+        <button class="btn btn-sm" onclick="document.getElementById('catalog-modal').style.display='none'" data-i18n="closeBtn">✕ 關閉</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: center;">
+          <select id="catalog-provider-select" style="width: 280px;" onchange="loadCatalogModelsForProvider(this.value)"></select>
+          <input type="text" id="catalog-model-search" data-i18n-placeholder="catalogSearchPlaceholder" placeholder="搜尋模型 ID 或名稱 (如 free, qwen, gpt-5, claude)..." oninput="filterCatalogModelsTable()" style="flex: 1;">
+        </div>
+        <div style="max-height: 520px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+          <table class="session-table">
+            <thead>
+              <tr>
+                <th data-i18n="colModelId">模型 ID</th>
+                <th data-i18n="colModelName">顯示名稱</th>
+                <th data-i18n="colModelLimits">上下文 / 輸出上限</th>
+                <th data-i18n="colCatalogFeatures">模態與特性</th>
+                <th style="text-align: right;" data-i18n="colActions">操作</th>
+              </tr>
+            </thead>
+            <tbody id="catalog-models-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/i18n.js"></script>
+  <script src="/app.js"></script>
+
+</body>
+</html>
