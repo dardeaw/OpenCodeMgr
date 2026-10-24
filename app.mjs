@@ -32,7 +32,7 @@ function openAppWindow() {
   if (targetExe) {
     console.log('[OpenCode Manager] Launching App Window with:', targetExe);
     try {
-      const p = spawn(targetExe, [`--app=${APP_URL}`, '--window-size=1260,860'], {
+      const p = spawn(targetExe, [`--app=${APP_URL}`, '--start-maximized'], {
         detached: true,
         stdio: 'ignore'
       });

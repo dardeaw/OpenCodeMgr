@@ -127,7 +127,7 @@ function parseAgentMarkdown(content, filename) {
     const fm = fmMatch[1];
     prompt = fmMatch[2].trim();
     let inPerm = false;
-    for (const rawLine of fm.split('\n')) {
+    for (const rawLine of fm.split('\\n')) {
       const line = rawLine.replace(/\r$/, '');
       const trimmed = line.trim();
       if (trimmed.startsWith('description:')) {
@@ -170,7 +170,7 @@ function parseTrimTools(content) {
   const match = content.match(/const\s+DESCS\s*=\s*\{([\s\S]*?)\n\};/);
   if (!match) return descs;
 
-  const lines = match[1].split('\n');
+  const lines = match[1].split('\\n');
   let currentKey = null;
   let currentVal = '';
 
@@ -240,7 +240,7 @@ async function getNodeData(node) {
     sshPrompt = await runNodeCmd(node, `cat "${promptSsh}" 2>/dev/null || true`);
 
     const agentFilesRaw = await runNodeCmd(node, `ls -1 "${agentDir}"/*.md 2>/dev/null || true`);
-    const agentFiles = agentFilesRaw.split('\n').map(s => s.trim()).filter(Boolean);
+    const agentFiles = agentFilesRaw.split('\\n').map(s => s.trim()).filter(Boolean);
     for (const f of agentFiles) {
       const filename = f.split('/').pop().split('\\').pop();
       const c = await runNodeCmd(node, `cat "${f}" 2>/dev/null || true`);
@@ -2024,7 +2024,7 @@ function getHtml(serverDetectedLocale = "zh-TW") {
             t('cleanSummaryReasoning', { count: st.deleted_reasoning || 0 }) +
             t('cleanSummarySnapshots', { count: st.deleted_files || 0 }) +
             t('cleanSummarySteps', { count: st.deleted_steps || 0 }) +
-            t('cleanSummarySaved', { saved: savedMB + ' MB' }) + '\n' +
+            t('cleanSummarySaved', { saved: savedMB + ' MB' }) + '\\n' +
             t('cleanSummaryTips');
         } else {
           report = t('cleanHealthyTitle') +
@@ -2253,7 +2253,7 @@ function getHtml(serverDetectedLocale = "zh-TW") {
       document.getElementById('agent-perm-search').value = p.grep || p.glob || 'inherit';
       document.getElementById('agent-perm-task').value = p.task || 'inherit';
       document.getElementById('agent-perm-web').value = p.websearch || p.webfetch || 'inherit';
-      document.getElementById('agent-perm-custom').value = (a.customRules || []).join('\n');
+      document.getElementById('agent-perm-custom').value = (a.customRules || []).join('\\n');
     }
 
     function createNewAgent() {
@@ -2316,7 +2316,7 @@ function getHtml(serverDetectedLocale = "zh-TW") {
       };
 
       const customRules = document.getElementById('agent-perm-custom').value
-        .split('\n')
+        .split('\\n')
         .map(s => s.trim())
         .filter(Boolean);
 
