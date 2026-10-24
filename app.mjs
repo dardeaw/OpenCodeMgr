@@ -32,7 +32,14 @@ function openAppWindow() {
   if (targetExe) {
     console.log('[OpenCode Manager] Launching App Window with:', targetExe);
     try {
-      const p = spawn(targetExe, [`--app=${APP_URL}`, '--start-maximized'], {
+      const appDataDir = path.join(process.env.LOCALAPPDATA || 'C:\\temp', 'OpenCodeMgr_App');
+      const p = spawn(targetExe, [
+        `--app=${APP_URL}`,
+        '--start-maximized',
+        '--window-position=0,0',
+        '--window-size=1920,1080',
+        `--user-data-dir=${appDataDir}`
+      ], {
         detached: true,
         stdio: 'ignore'
       });

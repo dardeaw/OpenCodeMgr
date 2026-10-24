@@ -2549,6 +2549,12 @@ function getHtml(serverDetectedLocale = "zh-TW") {
 
     // Initialize application
     async function initApp() {
+      try {
+        if (window.screen) {
+          window.moveTo(0, 0);
+          window.resizeTo(window.screen.availWidth, window.screen.availHeight);
+        }
+      } catch (e) {}
       applyDomI18n();
       await loadNodeList();
       await loadSessionStats();
