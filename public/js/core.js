@@ -129,11 +129,13 @@ function changeLanguage(lang) {
 // ============================================================================
 
 function formatBytes(bytes) {
-  if (!bytes || bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const n = Number(bytes);
+  if (isNaN(n) || n <= 0) return '0.00 MB';
+  const mb = n / (1024 * 1024);
+  if (mb > 0 && mb < 0.01) {
+    return mb.toFixed(3) + ' MB';
+  }
+  return mb.toFixed(2) + ' MB';
 }
 
 function formatTime(ts) {
