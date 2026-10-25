@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import time
+import urllib.request
 
 if sys.stdout.encoding != 'utf-8':
     try:
@@ -540,6 +541,38 @@ def set_auth_entry(provider_id, key_val, auth_type="api"):
         json.dump(auth_data, f, indent=2, ensure_ascii=False)
     return {"ok": True, "auth": auth_data}
 
+def probe_provider_models(base_url, api_key=""):
+    if not base_url or not str(base_url).strip():
+        return {"models": []}
+    url = str(base_url).strip().rstrip('/')
+    if not url.endswith('/models'):
+        url = url + '/models'
+    try:
+        headers = {'User-Agent': 'OpenCodeMgr/1.5', 'Accept': 'application/json'}
+        if api_key and str(api_key).strip():
+            headers['Authorization'] = f"Bearer {str(api_key).strip()}"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
+            payload = json.loads(resp.read().decode('utf-8'))
+        items = payload.get('data') if isinstance(payload, dict) else (payload if isinstance(payload, list) else [])
+        out = []
+        if isinstance(items, list):
+            for m in items:
+                if isinstance(m, dict) and m.get('id'):
+                    mid = str(m['id']).strip()
+                    mname = str(m.get('name') or mid).strip()
+                    ctx = 0
+                    if isinstance(m.get('context_length'), int):
+                        ctx = m['context_length']
+                    elif isinstance(m.get('max_model_len'), int):
+                        ctx = m['max_model_len']
+                    elif isinstance(m.get('meta'), dict) and isinstance(m['meta'].get('n_ctx_train'), int):
+                        ctx = m['meta']['n_ctx_train']
+                    out.append({"id": mid, "name": mname, "ctx": ctx})
+        return {"models": out, "url": url}
+    except Exception as e:
+        return {"models": [], "error": str(e), "url": url}
+
 if __name__ == '__main__':
     action = sys.argv[1] if len(sys.argv) > 1 else 'stats'
     if action == 'stats':
@@ -573,3 +606,7 @@ if __name__ == '__main__':
         pid = sys.argv[2] if len(sys.argv) > 2 else ''
         vjson = sys.argv[3] if len(sys.argv) > 3 else '{}'
         print(json.dumps(set_desktop_model_visibility(pid, vjson), ensure_ascii=False))
+    elif action == 'probe-models':
+        burl = sys.argv[2] if len(sys.argv) > 2 else ''
+        akey = sys.argv[3] if len(sys.argv) > 3 else ''
+        print(json.dumps(probe_provider_models(burl, akey), ensure_ascii=False))

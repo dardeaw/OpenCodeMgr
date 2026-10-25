@@ -4,6 +4,54 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.6.0] - 2026-10-25
+
+### 🧬 OpenCode Environment Clone, Network Replication & Snapshot Backup
+- **Node-to-Node Live Network Clone (`跨機網路對拷`)**:
+  - Replicate full or modular OpenCode environments directly from a source node (e.g. Local `.102`, Fedora `.55`, Nobara `.67`) to one or multiple destination nodes across the local network with sequential execution and granular per-node progress/error reporting.
+- **Portable Snapshot Export & Import (`環境快照匯出/還原備份`)**:
+  - Export OpenCode configuration snapshots as portable `.opencode-env.json` bundle files with one-click browser download (`GET /api/env-export?download=1`).
+  - Restore bundles onto any node with interactive JSON schema validation, detailed bundle metadata inspector (source platform, timestamp, modules count), and selective override controls (`POST /api/env-import`).
+- **Smart Cross-Platform Path Translation (`跨平台智慧路徑轉譯`)**:
+  - Automatically translates configuration and file paths between Windows (`C:\Users\馮\.config\opencode\...`) and Linux (`/home/dardeaw/.config/opencode/...`), normalizing path separators (`\` vs `/`) and user directories without broken references.
+- **Target BaseURL Preservation (`保留目標主機專屬 BaseURL`)**:
+  - Intelligent preservation mode ensures target-specific provider endpoints (e.g. local SSH tunnel `127.0.0.1:18200` vs tailnet `100.103.82.28:18200`) remain functional after cloning or restoring configurations.
+- **Pre-Execution Safe Auto-Backup (`自動備份安全防護`)**:
+  - Automatically creates timestamped backups (`.bak-YYYYMMDD_HHMMSS`) of `opencode.jsonc` and `auth.json` on the destination node before writing changes, preventing any accidental data loss.
+- **Granular 10-Component Module Matrix**:
+  - Full modular checkboxes to independently clone/export/import:
+    1. **Providers & Options** (`opencode.jsonc` provider configuration)
+    2. **Model Visibility & Status** (desktop `opencode.global.dat` & whitelist/blacklist)
+    3. **Provider Credentials** (`auth.json` / `/connect` API keys)
+    4. **Custom Agent Roles** (`agent/*.md`)
+    5. **Plugins** (`plugin/*.js`)
+    6. **Plugin Scopes** (`plugin-scopes.json` per-agent role routing)
+    7. **System Prompts & Instructions** (`prompts.json` / `AGENTS.md`)
+    8. **MCP Servers** (`opencode.jsonc` `"mcp"`)
+    9. **Tools Permissions Matrix** (`tools` block)
+    10. **Bash Execution Permissions** (`permissions` block)
+
+### 🔌 New MCP Tools (19 Tools Total)
+- Added 3 new Model Context Protocol tools for AI agent automation:
+  - `opencodemgr_export_env`: Export environment snapshot bundle from any node with optional module filtering.
+  - `opencodemgr_import_env`: Import and apply an environment bundle onto a target node with automatic backup and path translation.
+  - `opencodemgr_clone_env`: Execute direct node-to-node network replication across one or multiple targets.
+
+### 🏗️ Codebase Modular Refactoring
+- **Backend Service Decoupling**:
+  - Split monolithic backend logic into domain-driven service modules under `src/services/`:
+    - `clone-service.mjs`: Environment export, import, cross-platform path translation, and network replication.
+    - `node-service.mjs`: Multi-host node registry, SSH execution, and health probing.
+    - `provider-service.mjs`: Provider configurations, models catalog, and Desktop visibility sync.
+    - `agent-plugin-service.mjs`: Agents, plugin scopes, and system prompts.
+    - `session-service.mjs`: SQLite database parsing, session aggregation, and pruning.
+    - `shared-config.mjs`: Shared node filesystem and config path helpers.
+    - `manager-service.mjs`: Unified facade coordinating all services.
+- **Frontend Modularization**:
+  - Extracted modular logic into `public/js/modules/` (`env-clone.js`), keeping `public/app.js` clean and maintainable.
+
+---
+
 ## [v1.5.0] - 2026-10-25
 
 ### ✨ New Features & Sync Enhancements

@@ -65,6 +65,12 @@ export async function handleHttpRequest(req, res) {
     if (pathname === '/app.js') {
       return sendStaticFile(res, path.join(PUBLIC_DIR, 'app.js'), 'application/javascript; charset=utf-8');
     }
+    if (pathname.startsWith('/js/') && pathname.endsWith('.js')) {
+      const candidate = path.resolve(PUBLIC_DIR, '.' + pathname);
+      if (candidate.startsWith(PUBLIC_DIR)) {
+        return sendStaticFile(res, candidate, 'application/javascript; charset=utf-8');
+      }
+    }
     if (pathname === '/i18n.js') {
       const osLocale = Intl.DateTimeFormat().resolvedOptions().locale || 'zh-TW';
       const jsPayload = `window.I18N = ${JSON.stringify(I18N)};\nwindow.SERVER_DETECTED_LOCALE = ${JSON.stringify(osLocale)};\nconst I18N = window.I18N;\n`;
@@ -104,8 +110,31 @@ export async function handleHttpRequest(req, res) {
           return sendJson(res, 200, await managerService.getCatalogModels(nodeId, providerId));
         }
 
+        case '/api/probe-provider-models': {
+          const baseUrl = searchParams.get('baseURL') || '';
+          const apiKey = searchParams.get('apiKey') || '';
+          return sendJson(res, 200, await managerService.probeProviderModels(nodeId, baseUrl, apiKey));
+        }
+
         case '/api/config':
           return sendJson(res, 200, await managerService.getNodeConfigSnapshot(nodeId));
+
+        case '/api/env-export': {
+          const rawModules = searchParams.get('modules');
+          const modules = rawModules ? rawModules.split(',').map(s => s.trim()).filter(Boolean) : null;
+          const bundle = await managerService.exportEnvironmentBundle(nodeId, modules);
+          const dl = searchParams.get('download');
+          if (dl === '1') {
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const filename = `opencode-env-${nodeId}-${ts}.json`;
+            res.writeHead(200, {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Content-Disposition': `attachment; filename="${filename}"`
+            });
+            return res.end(JSON.stringify(bundle, null, 2));
+          }
+          return sendJson(res, 200, bundle);
+        }
 
         case '/api/mcp-tools':
           return sendJson(res, 200, { server: MCP_SERVER_INFO, tools: MCP_TOOLS });
@@ -222,6 +251,13 @@ export async function handleHttpRequest(req, res) {
         // Raw opencode.jsonc
         case '/api/save-raw-jsonc':
           return sendJson(res, 200, await managerService.saveRawJsonc(nodeId, data.content));
+
+        // Environment Clone, Export & Import
+        case '/api/env-import':
+          return sendJson(res, 200, await managerService.applyEnvironmentBundle(data.node || nodeId, data.bundle, data.options || {}));
+
+        case '/api/env-clone':
+          return sendJson(res, 200, await managerService.cloneNodeToNode(data.sourceNode, data.targetNodes, data.options || {}));
 
         default:
           return sendJson(res, 404, { error: `Unknown POST endpoint: ${pathname}` });

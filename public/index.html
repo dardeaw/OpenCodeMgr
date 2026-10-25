@@ -13,7 +13,7 @@
   <header>
     <div class="logo-area">
       <h1>OpenCode Manager</h1>
-      <span class="badge">v1.5.0</span>
+      <span class="badge">v1.6.0</span>
       
       <!-- Dynamic Node Selector -->
       <div class="node-bar">
@@ -22,6 +22,7 @@
           <option value="local">💻 本機 (.102)</option>
         </select>
         <button class="btn btn-sm" onclick="openNodeManagerModal()" data-i18n="manageNodes">⚙️ 管理主機</button>
+        <button class="btn btn-sm" style="border-color: #ec4899; color: #f472b6; background: rgba(236,72,153,0.1);" onclick="openEnvCloneModal()" data-i18n="envCloneBtn">🧬 環境複製與備份</button>
       </div>
 
       <span class="badge" id="host-badge" style="color: #38bdf8;">192.168.68.102</span>
@@ -231,7 +232,7 @@
             <div class="row">
               <div class="col">
                 <label data-i18n="providerBaseUrlLbl">API 端點網址 (options.baseURL)</label>
-                <input type="text" id="prov-baseurl" placeholder="http://192.168.68.55:8741/v1">
+                <input type="text" id="prov-baseurl" placeholder="http://192.168.68.55:8741/v1" onchange="probeCurrentProviderModels()">
               </div>
               <div class="col">
                 <label data-i18n="providerApiKeyJsoncLbl">設定檔 API Key (options.apiKey in opencode.jsonc，選填)</label>
@@ -917,9 +918,167 @@
     </div>
   </div>
 
+  <!-- Environment Clone, Network Replication & Snapshot Backup Modal -->
+  <div class="modal-overlay" id="env-clone-modal" onclick="closeEnvCloneModalOverlay(event)">
+    <div class="modal-box" style="max-width: 860px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h3 style="font-size: 15px; font-weight: 600; color: #ec4899;" data-i18n="envCloneModalTitle">🧬 OpenCode 環境複製、跨機對拷與快照備份</h3>
+          <span class="badge" style="background: rgba(236,72,153,0.18); color: #f472b6;">Auto-Backup & Path Translate</span>
+        </div>
+        <button class="btn btn-sm" onclick="closeEnvCloneModal()" data-i18n="closeBtn">✕ 關閉</button>
+      </div>
+
+      <div class="modal-body" style="padding-top: 10px;">
+        <!-- Sub-tabs: 1. 🚀 跨機網路對拷 | 2. 📦 匯出快照檔 | 3. 📤 匯入快照檔 -->
+        <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 16px; padding-bottom: 8px;">
+          <button class="btn btn-sm" id="btn-env-tab-clone" onclick="switchEnvCloneSubTab('clone')">🚀 跨機網路對拷 (Node-to-Node)</button>
+          <button class="btn btn-sm" id="btn-env-tab-export" onclick="switchEnvCloneSubTab('export')">📦 匯出快照包 (.json)</button>
+          <button class="btn btn-sm" id="btn-env-tab-import" onclick="switchEnvCloneSubTab('import')">📤 匯入還原快照</button>
+        </div>
+
+        <!-- Sub-pane 1: 🚀 跨機網路對拷 (Network Clone) -->
+        <div id="env-pane-clone">
+          <div class="row">
+            <div class="col">
+              <label style="color: #38bdf8;">來源主機節點 (Source Node)</label>
+              <select id="env-clone-source-select" onchange="onCloneSourceChange()"></select>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="color: #ec4899; margin-bottom: 0;">接收複製的目標節點 (Destination Nodes，可多選群發)</label>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" onclick="toggleAllCloneTargets(true)">全選</button>
+                <button type="button" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" onclick="toggleAllCloneTargets(false)">全不選</button>
+              </div>
+            </div>
+            <div id="env-clone-targets-list" style="max-height: 140px; overflow-y: auto; padding: 2px;"></div>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="color: #a78bfa; margin-bottom: 0;">要複製的環境項目 (Select Components)</label>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" onclick="toggleAllModules('clone', true)">全選</button>
+                <button type="button" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" onclick="toggleAllModules('clone', false)">全不選</button>
+              </div>
+            </div>
+            <div id="env-clone-modules-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 6px; max-height: 180px; overflow-y: auto; padding: 2px;"></div>
+          </div>
+
+          <!-- Advanced Safety & Adaptation Options -->
+          <div style="background: #090a0d; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-size: 12px; font-weight: 600; color: #f8fafc; margin-bottom: 8px;">🛡️ 跨平台轉譯與安全防護選項</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; text-transform: none; color: #cbd5e1;">
+                <input type="checkbox" id="env-clone-opt-translate" checked style="width: 15px; height: 15px; accent-color: #ec4899;">
+                <span><strong>跨平台智慧路徑轉譯</strong>（Windows ⇄ Linux 自動替換主機家目錄路徑與斜線格式）</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; text-transform: none; color: #cbd5e1;">
+                <input type="checkbox" id="env-clone-opt-preserve-urls" checked style="width: 15px; height: 15px; accent-color: #ec4899;">
+                <span><strong>保留目標主機現有的 Provider 端點網址</strong>（例如保留 Windows 的 127.0.0.1 tunnel 或 Linux 的 tailnet IP）</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; text-transform: none; color: #cbd5e1;">
+                <input type="checkbox" id="env-clone-opt-backup" checked style="width: 15px; height: 15px; accent-color: #ec4899;">
+                <span><strong>寫入前在目標主機自動建立安全備份</strong>（產生 .bak-時間戳，開箱即享無損回退保障）</span>
+              </label>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-sm" onclick="closeEnvCloneModal()">取消</button>
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #ec4899, #db2777); border: none; font-weight: 600;" onclick="executeNetworkClone()">🚀 開始執行跨機網路對拷</button>
+          </div>
+
+          <div id="env-clone-results" style="margin-top: 12px;"></div>
+        </div>
+
+        <!-- Sub-pane 2: 📦 匯出快照包 (Export Bundle) -->
+        <div id="env-pane-export" style="display: none;">
+          <div class="row">
+            <div class="col">
+              <label style="color: #38bdf8;">欲打包之來源主機 (Source Node)</label>
+              <select id="env-export-source-select"></select>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="color: #a78bfa; margin-bottom: 0;">包含模組勾選 (Select Components to Include)</label>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" onclick="toggleAllModules('export', true)">全選</button>
+                <button type="button" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" onclick="toggleAllModules('export', false)">全不選</button>
+              </div>
+            </div>
+            <div id="env-export-modules-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 6px; max-height: 240px; overflow-y: auto; padding: 2px;"></div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
+            <button class="btn btn-sm" onclick="closeEnvCloneModal()">取消</button>
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; font-weight: 600;" onclick="downloadEnvExport()">📥 匯出並下載環境快照 (.json)</button>
+          </div>
+        </div>
+
+        <!-- Sub-pane 3: 📤 匯入還原快照 (Import & Restore) -->
+        <div id="env-pane-import" style="display: none;">
+          <div class="row">
+            <div class="col">
+              <label style="color: #38bdf8;">欲還原至的目標主機 (Target Node)</label>
+              <select id="env-import-target-select"></select>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <label style="color: #ec4899;">選取 OpenCode 環境快照檔案 (.json)</label>
+            <input type="file" id="env-import-file-input" accept=".json,application/json" onchange="onEnvImportFileSelected(event)" style="padding: 8px; background: #090a0d; border: 1px dashed var(--border); border-radius: 6px; width: 100%;">
+          </div>
+
+          <!-- Snapshot Preview Card -->
+          <div id="env-import-preview" style="display: none; background: #090a0d; border: 1px solid #10b981; border-radius: 6px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-weight: 600; color: #10b981; font-size: 13px; margin-bottom: 4px;" id="env-import-preview-name"></div>
+            <div style="font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 8px;" id="env-import-preview-meta"></div>
+            <div style="display: flex; gap: 16px; font-size: 12px; color: #cbd5e1; flex-wrap: wrap;" id="env-import-preview-summary"></div>
+          </div>
+
+          <!-- Advanced Safety & Adaptation Options for Import -->
+          <div style="background: #090a0d; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-size: 12px; font-weight: 600; color: #f8fafc; margin-bottom: 8px;">🛡️ 還原防護選項</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; text-transform: none; color: #cbd5e1;">
+                <input type="checkbox" id="env-import-opt-translate" checked style="width: 15px; height: 15px; accent-color: #ec4899;">
+                <span><strong>跨平台智慧路徑轉譯</strong>（自動替換路徑與斜線格式）</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; text-transform: none; color: #cbd5e1;">
+                <input type="checkbox" id="env-import-opt-preserve-urls" checked style="width: 15px; height: 15px; accent-color: #ec4899;">
+                <span><strong>保留目標主機現有的 Provider 端點網址</strong></span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; text-transform: none; color: #cbd5e1;">
+                <input type="checkbox" id="env-import-opt-backup" checked style="width: 15px; height: 15px; accent-color: #ec4899;">
+                <span><strong>寫入前在目標主機自動建立安全備份 (.bak)</strong></span>
+              </label>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-sm" onclick="closeEnvCloneModal()">取消</button>
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 600;" onclick="executeEnvImport()">📤 立即還原匯入至目標主機</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script src="/i18n.js"></script>
+  <script src="/js/core.js"></script>
+  <script src="/js/components/fuzzy-combobox.js"></script>
+  <script src="/js/modules/sessions.js"></script>
+  <script src="/js/modules/providers.js"></script>
+  <script src="/js/modules/agents-plugins.js"></script>
+  <script src="/js/modules/env-clone.js"></script>
   <script src="/app.js"></script>
 
 </body>

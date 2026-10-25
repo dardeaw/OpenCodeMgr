@@ -6,7 +6,7 @@ import * as managerService from '../services/manager-service.mjs';
 
 export const MCP_SERVER_INFO = {
   name: 'opencodemgr-mcp',
-  version: '1.5.0'
+  version: '1.6.0'
 };
 
 export const MCP_TOOLS = [
@@ -219,6 +219,56 @@ export const MCP_TOOLS = [
       },
       required: ['action', 'id']
     }
+  },
+  {
+    name: 'opencodemgr_export_env',
+    description: 'Export a portable OpenCode environment bundle from a node (providers, models, auth, agents, plugins, scopes, prompts, MCP, tools, permissions).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        node: { type: 'string', description: 'Source node ID (default: "local").' },
+        modules: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional subset of modules to export (e.g. ["providers", "agents", "plugins", "auth"]). Defaults to all.'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'opencodemgr_import_env',
+    description: 'Import and apply a portable OpenCode environment bundle onto a target node with automatic backup and cross-platform path translation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        node: { type: 'string', description: 'Target node ID to restore onto.' },
+        bundle: { type: 'object', description: 'The environment bundle object created by export.' },
+        smartPathTranslate: { type: 'boolean', description: 'Automatically translate file paths between Windows and Linux. Default true.' },
+        preserveBaseUrls: { type: 'boolean', description: 'Preserve existing provider baseURL on target node. Default true.' },
+        backupTarget: { type: 'boolean', description: 'Create .bak backup on target node before applying. Default true.' }
+      },
+      required: ['node', 'bundle']
+    }
+  },
+  {
+    name: 'opencodemgr_clone_env',
+    description: 'Clone an OpenCode environment directly across the network from a source node to one or more target nodes with auto-backup and smart path translation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sourceNode: { type: 'string', description: 'Source node ID (e.g. "local").' },
+        targetNodes: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Array of target node IDs to clone onto (e.g. ["remote55"]).'
+        },
+        modules: { type: 'array', items: { type: 'string' }, description: 'Subset of modules to clone. Defaults to all.' },
+        smartPathTranslate: { type: 'boolean', description: 'Automatically rewrite Windows/Linux config paths. Default true.' },
+        preserveBaseUrls: { type: 'boolean', description: 'Keep existing provider baseURL on targets. Default true.' }
+      },
+      required: ['sourceNode', 'targetNodes']
+    }
   }
 ];
 
@@ -328,6 +378,23 @@ export async function executeMcpTool(name, args = {}) {
       }
       return await managerService.saveMcpServer(nodeId, args);
     }
+
+    case 'opencodemgr_export_env':
+      return await managerService.exportEnvironmentBundle(nodeId, args.modules);
+
+    case 'opencodemgr_import_env':
+      return await managerService.applyEnvironmentBundle(args.node, args.bundle, {
+        smartPathTranslate: args.smartPathTranslate,
+        preserveBaseUrls: args.preserveBaseUrls,
+        backupTarget: args.backupTarget
+      });
+
+    case 'opencodemgr_clone_env':
+      return await managerService.cloneNodeToNode(args.sourceNode, args.targetNodes, {
+        modules: args.modules,
+        smartPathTranslate: args.smartPathTranslate,
+        preserveBaseUrls: args.preserveBaseUrls
+      });
 
     default:
       throw new Error(`Unknown MCP tool: ${name}`);

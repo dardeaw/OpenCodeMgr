@@ -94,6 +94,8 @@ export const I18N = {
     connecting: '連線同步中...',
     refresh: '🔄 重新整理',
     manageNodes: '⚙️ 管理主機',
+    envCloneBtn: '🧬 環境複製與備份',
+    envCloneModalTitle: '🧬 OpenCode 環境複製、跨機對拷與快照備份',
     localNode: '💻 本機',
     localTag: '本機',
 
@@ -539,6 +541,8 @@ export const I18N = {
     connecting: '连接同步中...',
     refresh: '🔄 刷新数据',
     manageNodes: '⚙️ 管理主机',
+    envCloneBtn: '🧬 环境复制与备份',
+    envCloneModalTitle: '🧬 OpenCode 环境复制、跨机对拷与快照备份',
     localNode: '💻 本机',
     localTag: '本机',
 
@@ -984,6 +988,8 @@ export const I18N = {
     connecting: 'Syncing node...',
     refresh: '🔄 Refresh',
     manageNodes: '⚙️ Manage Nodes',
+    envCloneBtn: '🧬 Clone & Backup Env',
+    envCloneModalTitle: '🧬 OpenCode Environment Clone, Replication & Snapshot Backup',
     localNode: '💻 Localhost',
     localTag: 'Local',
 
@@ -1429,6 +1435,8 @@ export const I18N = {
     connecting: 'ノード同期中...',
     refresh: '🔄 更新',
     manageNodes: '⚙️ ホスト管理',
+    envCloneBtn: '🧬 環境複製とバックアップ',
+    envCloneModalTitle: '🧬 OpenCode 環境複製・ノード間同期・スナップショット',
     localNode: '💻 ローカル',
     localTag: 'ローカル',
 
