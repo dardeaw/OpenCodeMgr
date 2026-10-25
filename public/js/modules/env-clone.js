@@ -5,15 +5,15 @@ let currentEnvCloneSubTab = 'clone';
 let currentImportBundle = null;
 
 const ALL_CLONE_MODULES = [
-  { id: 'providers', label: '🧠 供應商、旗下模型與全域指派 (Providers & Global Models)', default: true },
-  { id: 'models_visibility', label: '🎛️ 模型選擇器顯示開關 (opencode.global.dat 撥桿狀態)', default: true },
-  { id: 'auth', label: '🔑 全域認證金鑰 (auth.json Keys)', default: true },
-  { id: 'agents', label: '🤖 自訂代理角色 (agent/*.md 檔案與專屬權限)', default: true },
-  { id: 'plugins', label: '🧩 插件與依角色啟停 (plugin/*.js 與 scopes)', default: true },
-  { id: 'prompts', label: '📋 系統提示詞 (AGENTS.md / local / ssh)', default: true },
-  { id: 'mcp', label: '🔌 MCP 擴充伺服器設定 (opencode.jsonc mcp)', default: true },
-  { id: 'tools', label: '🛠️ 工具精簡設定 (plugin/trim-tools.js)', default: true },
-  { id: 'permissions', label: '🛡️ Bash 權限規則 (permission.bash)', default: true }
+  { id: 'providers', labelKey: 'modProviders', default: true },
+  { id: 'models_visibility', labelKey: 'modModelsVisibility', default: true },
+  { id: 'auth', labelKey: 'modAuth', default: true },
+  { id: 'agents', labelKey: 'modAgents', default: true },
+  { id: 'plugins', labelKey: 'modPlugins', default: true },
+  { id: 'prompts', labelKey: 'modPrompts', default: true },
+  { id: 'mcp', labelKey: 'modMcp', default: true },
+  { id: 'tools', labelKey: 'modTools', default: true },
+  { id: 'permissions', labelKey: 'modPermissions', default: true }
 ];
 
 // ============================================================================
@@ -40,11 +40,11 @@ function closeEnvCloneModalOverlay(e) {
 
 function switchEnvCloneSubTab(tab) {
   currentEnvCloneSubTab = tab;
-  ['clone', 'export', 'import'].forEach(t => {
-    const btn = document.getElementById('btn-env-tab-' + t);
-    const pane = document.getElementById('env-pane-' + t);
+  ['clone', 'export', 'import'].forEach(tKey => {
+    const btn = document.getElementById('btn-env-tab-' + tKey);
+    const pane = document.getElementById('env-pane-' + tKey);
     if (btn) {
-      if (t === tab) {
+      if (tKey === tab) {
         btn.classList.add('active');
         btn.style.background = 'rgba(236,72,153,0.2)';
         btn.style.color = '#f472b6';
@@ -57,7 +57,7 @@ function switchEnvCloneSubTab(tab) {
       }
     }
     if (pane) {
-      pane.style.display = t === tab ? 'block' : 'none';
+      pane.style.display = tKey === tab ? 'block' : 'none';
     }
   });
 }
@@ -109,7 +109,7 @@ function renderCloneTargetNodesChecklist() {
   const targetCandidates = nodeList.filter(n => n.id !== sourceNodeId);
 
   if (targetCandidates.length === 0) {
-    container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px;">(查無其他主機節點，請先至「⚙️ 管理主機」新增遠端節點)</div>';
+    container.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:8px;">${t('noOtherNodesHint')}</div>`;
     return;
   }
 
@@ -132,14 +132,24 @@ function onCloneSourceChange() {
 function renderModuleChecklist(containerId, prefix) {
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  // Preserve checked state if re-rendering due to language change
+  const currentChecked = {};
+  container.querySelectorAll(`.${prefix}-module-cb`).forEach(cb => {
+    currentChecked[cb.getAttribute('data-module')] = cb.checked;
+  });
+
   container.innerHTML = '';
 
   ALL_CLONE_MODULES.forEach(m => {
+    const isChecked = currentChecked[m.id] !== undefined ? currentChecked[m.id] : m.default;
+    const labelText = t(m.labelKey);
+
     const lbl = document.createElement('label');
     lbl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:#11131a;border:1px solid var(--border);border-radius:5px;cursor:pointer;margin-bottom:6px;';
     lbl.innerHTML = `
-      <input type="checkbox" class="${prefix}-module-cb" data-module="${m.id}" ${m.default ? 'checked' : ''} style="width:15px;height:15px;accent-color:#ec4899;">
-      <span style="font-size:12.5px;color:#cbd5e1;">${escapeHtml(m.label)}</span>
+      <input type="checkbox" class="${prefix}-module-cb" data-module="${m.id}" ${isChecked ? 'checked' : ''} style="width:15px;height:15px;accent-color:#ec4899;">
+      <span style="font-size:12.5px;color:#cbd5e1;">${escapeHtml(labelText)}</span>
     `;
     container.appendChild(lbl);
   });
@@ -161,6 +171,18 @@ function getSelectedModules(prefix) {
   return list;
 }
 
+function refreshEnvCloneI18n() {
+  const modal = document.getElementById('env-clone-modal');
+  if (!modal || modal.style.display === 'none') return;
+  renderCloneTargetNodesChecklist();
+  renderModuleChecklist('env-clone-modules-list', 'clone');
+  renderModuleChecklist('env-export-modules-list', 'export');
+  if (currentImportBundle) {
+    const fn = document.getElementById('env-import-preview-name').innerText;
+    renderImportPreview(currentImportBundle, fn);
+  }
+}
+
 // ============================================================================
 // 3. Network Clone Execution (Node to Node)
 // ============================================================================
@@ -173,26 +195,29 @@ async function executeNetworkClone() {
   });
 
   if (targetNodes.length === 0) {
-    return alert('請至少勾選一個接收複製的目標節點！');
+    return alert(t('alertNoTargets'));
   }
 
   const modules = getSelectedModules('clone');
   if (modules.length === 0) {
-    return alert('請至少勾選一項要複製的環境項目！');
+    return alert(t('alertNoModules'));
   }
 
   const smartPathTranslate = document.getElementById('env-clone-opt-translate').checked;
   const preserveBaseUrls = document.getElementById('env-clone-opt-preserve-urls').checked;
   const backupTarget = document.getElementById('env-clone-opt-backup').checked;
 
-  const confirmMsg = `確定要將【${sourceNode}】的 OpenCode 環境推送到以下 ${targetNodes.length} 台主機嗎？\n` +
-    targetNodes.map(t => ' • ' + t).join('\n') +
-    `\n\n共包含 ${modules.length} 個模組，目標主機將在寫入前自動建立安全備份。`;
+  const confirmMsg = t('confirmNetworkClone', {
+    source: sourceNode,
+    count: targetNodes.length,
+    targets: targetNodes.map(tNode => ' • ' + tNode).join('\n'),
+    modCount: modules.length
+  });
 
   if (!confirm(confirmMsg)) return;
 
   const resultsContainer = document.getElementById('env-clone-results');
-  resultsContainer.innerHTML = '<div style="padding:12px;color:#38bdf8;font-size:12.5px;">⏳ 正在網路對拷同步中，請稍候...</div>';
+  resultsContainer.innerHTML = `<div style="padding:12px;color:#38bdf8;font-size:12.5px;">${t('cloneSyncing')}</div>`;
   showLoading(true);
 
   try {
@@ -222,25 +247,25 @@ async function executeNetworkClone() {
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span style="font-weight:600;color:#fff;font-size:13px;">${escapeHtml(targetObj.name)} (${escapeHtml(r.targetNode)})</span>
           <span class="badge" style="background:${isOk ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'};color:${isOk ? '#10b981' : '#ef4444'};">
-            ${isOk ? '✓ 對拷成功' : '✕ 失敗: ' + escapeHtml(r.error || '')}
+            ${isOk ? t('previewCloneSuccess') : t('previewCloneFailed') + ': ' + escapeHtml(r.error || '')}
           </span>
         </div>
-        ${isOk ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">同步模組: ${(r.appliedModules || []).join(', ')} | 自動備份: ${r.backupCreated ? '已建立' : '未啟用'}</div>` : ''}
+        ${isOk ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">${t('previewSyncModules')}: ${(r.appliedModules || []).join(', ')} | ${t('previewAutoBackup')}: ${r.backupCreated ? t('previewBackupCreated') : t('previewBackupDisabled')}</div>` : ''}
       `;
       resultsContainer.appendChild(div);
     });
 
     if (allOk) {
-      showToast('🎉 跨機網路對拷全數完成！');
+      showToast(t('cloneSuccessAll'));
       if (targetNodes.includes(currentNode)) {
         await reloadAll();
       }
     } else {
-      showToast('⚠️ 部分節點對拷失敗，請檢視結果清單');
+      showToast(t('clonePartialFail'));
     }
   } catch (err) {
-    resultsContainer.innerHTML = `<div style="color:var(--danger);padding:10px;">對拷失敗: ${escapeHtml(err.message)}</div>`;
-    alert('對拷失敗: ' + err.message);
+    resultsContainer.innerHTML = `<div style="color:var(--danger);padding:10px;">${t('cloneFailed')} ${escapeHtml(err.message)}</div>`;
+    alert(t('cloneFailed') + ' ' + err.message);
   } finally {
     showLoading(false);
   }
@@ -254,7 +279,7 @@ function downloadEnvExport() {
   const sourceNode = document.getElementById('env-export-source-select').value;
   const modules = getSelectedModules('export');
   if (modules.length === 0) {
-    return alert('請至少勾選一項要匯出的環境模組！');
+    return alert(t('alertNoModules'));
   }
 
   const url = `/api/env-export?node=${encodeURIComponent(sourceNode)}&modules=${encodeURIComponent(modules.join(','))}&download=1`;
@@ -264,7 +289,7 @@ function downloadEnvExport() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  showToast(`已開始下載【${sourceNode}】環境快照包`);
+  showToast(t('exportStarted', { node: sourceNode }));
 }
 
 // ============================================================================
@@ -280,12 +305,12 @@ function onEnvImportFileSelected(event) {
     try {
       const bundle = JSON.parse(e.target.result);
       if (!bundle || !bundle.components) {
-        throw new Error('此檔案不是合法的 OpenCode 環境快照包 (缺少 components 區塊)');
+        throw new Error(t('alertInvalidSnapshot'));
       }
       currentImportBundle = bundle;
       renderImportPreview(bundle, file.name);
     } catch (err) {
-      alert('解析快照失敗: ' + err.message);
+      alert(t('alertParseSnapshotFail') + ' ' + err.message);
       currentImportBundle = null;
       document.getElementById('env-import-preview').style.display = 'none';
     }
@@ -308,19 +333,19 @@ function renderImportPreview(bundle, filename) {
 
   document.getElementById('env-import-preview-name').innerText = filename;
   document.getElementById('env-import-preview-meta').innerText =
-    `來源節點: ${src.name || src.id || '未知'} (${src.isWindows ? 'Windows' : 'Linux'}) | 匯出時間: ${formatTime(bundle.exportedAt)} | 版本: ${bundle.version || '1.0'}`;
+    `${t('previewSourceNode')}: ${src.name || src.id || 'Unknown'} (${src.isWindows ? 'Windows' : 'Linux'}) | ${t('previewExportTime')}: ${formatTime(bundle.exportedAt)} | ${t('previewVersion')}: ${bundle.version || '1.0'}`;
 
   document.getElementById('env-import-preview-summary').innerHTML = `
-    <span>🧠 供應商: <strong>${provCount}</strong> 組</span>
-    <span>🤖 代理角色: <strong>${agentCount}</strong> 款</span>
-    <span>🧩 插件: <strong>${pluginCount}</strong> 個</span>
-    <span>🔑 認證金鑰: <strong>${hasAuth ? '包含' : '無'}</strong></span>
+    <span>🧠 ${t('previewProviders')}: <strong>${provCount}</strong></span>
+    <span>🤖 ${t('previewAgents')}: <strong>${agentCount}</strong></span>
+    <span>🧩 ${t('previewPlugins')}: <strong>${pluginCount}</strong></span>
+    <span>🔑 ${t('previewAuth')}: <strong>${hasAuth ? t('previewIncluded') : t('previewNone')}</strong></span>
   `;
 }
 
 async function executeEnvImport() {
   if (!currentImportBundle) {
-    return alert('請先選取要還原匯入的快照檔案 (.json)！');
+    return alert(t('alertNoImportFile'));
   }
 
   const targetNode = document.getElementById('env-import-target-select').value;
@@ -329,7 +354,7 @@ async function executeEnvImport() {
   const backupTarget = document.getElementById('env-import-opt-backup').checked;
 
   const targetObj = nodeList.find(n => n.id === targetNode) || { name: targetNode };
-  const confirmMsg = `確定要將此快照還原匯入至目標節點【${targetObj.name}】嗎？\n\n寫入前將自動在目標機建立 .bak 安全備份。`;
+  const confirmMsg = t('confirmEnvImport', { target: targetObj.name });
   if (!confirm(confirmMsg)) return;
 
   showLoading(true);
@@ -346,13 +371,13 @@ async function executeEnvImport() {
 
     if (res.error) throw new Error(res.error);
 
-    showToast(`🎉 快照已成功還原匯入至【${targetObj.name}】！`);
+    showToast(t('importSuccess', { node: targetObj.name }));
     if (targetNode === currentNode) {
       await reloadAll();
     }
     closeEnvCloneModal();
   } catch (err) {
-    alert('還原匯入失敗: ' + err.message);
+    alert(t('importFailed') + ' ' + err.message);
   } finally {
     showLoading(false);
   }

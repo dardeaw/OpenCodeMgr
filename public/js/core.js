@@ -120,6 +120,7 @@ function changeLanguage(lang) {
   if (currentPluginFilename) selectPlugin(currentPluginFilename);
   renderNodeManagerCards();
   refreshAllFuzzyComboboxes();
+  if (typeof refreshEnvCloneI18n === 'function') refreshEnvCloneI18n();
 }
 
 // ============================================================================
