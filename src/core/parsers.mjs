@@ -115,6 +115,48 @@ export function serializeAgentMarkdown(data) {
 }
 
 /**
+ * Parse a Skill Markdown file (skills/<name>/SKILL.md) with YAML frontmatter
+ */
+export function parseSkillMarkdown(content, dirName = '') {
+  let name = dirName;
+  let description = '';
+  let body = content || '';
+
+  const fmMatch = (content || '').match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  if (fmMatch) {
+    const fm = fmMatch[1];
+    body = fmMatch[2].trim();
+    for (const rawLine of fm.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (line.startsWith('name:')) {
+        name = line.slice(5).trim().replace(/^["']|["']$/g, '');
+      } else if (line.startsWith('description:')) {
+        description = line.slice(12).trim().replace(/^["']|["']$/g, '');
+      }
+    }
+  }
+
+  return {
+    id: dirName || name,
+    name: name || dirName,
+    description,
+    content: body,
+    raw: content || ''
+  };
+}
+
+/**
+ * Serialize Skill configuration into Markdown with YAML frontmatter
+ */
+export function serializeSkillMarkdown(data = {}) {
+  const cleanName = (data.name || data.id || '').trim();
+  const cleanDesc = (data.description || '').trim();
+  const cleanContent = (data.content || '').trim();
+
+  return `---\nname: ${cleanName}\ndescription: ${cleanDesc}\n---\n\n${cleanContent}\n`;
+}
+
+/**
  * Parse tool descriptions from plugin/trim-tools.js
  */
 export function parseTrimTools(content) {

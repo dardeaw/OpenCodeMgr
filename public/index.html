@@ -42,6 +42,7 @@
     <button class="tab-btn active" onclick="switchTab('sessions')" data-i18n="tabSessions">💬 對話記錄</button>
     <button class="tab-btn" onclick="switchTab('system-prompts')" data-i18n="tabPrompts">📋 系統提示詞</button>
     <button class="tab-btn" onclick="switchTab('agents')" data-i18n="tabAgents">🤖 角色管理</button>
+    <button class="tab-btn" onclick="switchTab('skills')" data-i18n="tabSkills">⚡ 技能管理</button>
     <button class="tab-btn" onclick="switchTab('mcp')" data-i18n="tabMcp">🔌 MCP 伺服器</button>
     <button class="tab-btn" onclick="switchTab('plugins')" data-i18n="tabPlugins">🧩 插件管理</button>
     <button class="tab-btn" onclick="switchTab('tools')" data-i18n="tabTools">🛠️ 工具與權限</button>
@@ -535,6 +536,53 @@
               <div id="agent-plugins-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 7px;"></div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2.5 Skills -->
+    <div id="skills" class="tab-pane">
+      <div class="sticky-selector-zone">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+            <h2 style="font-size: 14px;" id="skills-list-title" data-i18n="skillsTitle">⚡ 技能工作流 (Skills)</h2>
+            <input type="text" id="skills-search-input" placeholder="搜尋技能名稱或說明..." data-i18n-placeholder="searchSkillsPh" style="max-width: 280px; padding: 4px 10px; font-size: 12px;" oninput="onSkillsSearchInput(this.value)">
+          </div>
+          <button class="btn btn-primary" onclick="createNewSkill()" data-i18n="addSkillBtn">➕ 新增技能</button>
+        </div>
+
+        <div class="agent-grid" id="skills-list"></div>
+      </div>
+
+      <!-- Skill Editor -->
+      <div class="card" id="skill-editor" style="display: none;">
+        <div class="card-title">
+          <span id="skill-editor-title" data-i18n="editSkillTitle">編輯技能工作流</span>
+          <div>
+            <button class="btn btn-danger" id="btn-delete-skill" onclick="deleteCurrentSkill()" data-i18n="deleteSkillBtn">🗑️ 刪除技能</button>
+            <button class="btn btn-primary" onclick="saveCurrentSkill()" data-i18n="saveSkillBtn">💾 儲存技能</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label data-i18n="skillIdLabel">技能目錄名稱 (ID)</label>
+            <input type="text" id="skill-id" placeholder="例如 git-release、docker-deploy" data-i18n-placeholder="skillIdPh">
+          </div>
+          <div class="col">
+            <label data-i18n="skillNameLabel">技能顯示名稱</label>
+            <input type="text" id="skill-name" placeholder="輸入技能顯示名稱..." data-i18n-placeholder="skillNamePh">
+          </div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label data-i18n="skillDescLabel">觸發情境與能力說明 (AI 啟動時讀取)</label>
+          <textarea id="skill-desc" data-i18n-placeholder="skillDescPh" placeholder="簡述此技能的觸發時機與主要功能..." style="min-height: 60px; height: 68px; resize: vertical; line-height: 1.45;"></textarea>
+        </div>
+
+        <div style="flex: 1; display: flex; flex-direction: column; min-height: 380px;">
+          <label data-i18n="skillContentLabel">SKILL.md 執行指令與詳細規範 (Markdown)</label>
+          <textarea id="skill-content" style="flex: 1; min-height: 340px; font-family: monospace; font-size: 12.5px; line-height: 1.5; resize: vertical;"></textarea>
         </div>
       </div>
     </div>
@@ -1078,6 +1126,7 @@
   <script src="/js/modules/sessions.js"></script>
   <script src="/js/modules/providers.js"></script>
   <script src="/js/modules/agents-plugins.js"></script>
+  <script src="/js/modules/skills.js"></script>
   <script src="/js/modules/env-clone.js"></script>
   <script src="/app.js"></script>
 

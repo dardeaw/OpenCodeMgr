@@ -5,4 +5,5 @@ export * from './node-service.mjs';
 export * from './session-service.mjs';
 export * from './provider-service.mjs';
 export * from './agent-plugin-service.mjs';
+export * from './skill-service.mjs';
 export * from './clone-service.mjs';

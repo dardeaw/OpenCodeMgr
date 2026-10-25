@@ -27,9 +27,12 @@ async function reloadAll() {
     document.getElementById('global-title-model').value = (agentCfg.title && agentCfg.title.model) || '';
     document.getElementById('global-compaction-model').value = comp.model || '';
 
-    // Render Models/Providers, Agents, MCP & Plugins
+    // Render Models/Providers, Agents, Skills, MCP & Plugins
     renderProviders();
     renderAgents();
+    if (typeof renderSkills === 'function') {
+      renderSkills();
+    }
     renderMcp();
     renderPlugins();
     ensureDefaultCardSelections();

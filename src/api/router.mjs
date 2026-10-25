@@ -119,6 +119,9 @@ export async function handleHttpRequest(req, res) {
         case '/api/config':
           return sendJson(res, 200, await managerService.getNodeConfigSnapshot(nodeId));
 
+        case '/api/skills':
+          return sendJson(res, 200, await managerService.listSkills(nodeId));
+
         case '/api/env-export': {
           const rawModules = searchParams.get('modules');
           const modules = rawModules ? rawModules.split(',').map(s => s.trim()).filter(Boolean) : null;
@@ -202,6 +205,13 @@ export async function handleHttpRequest(req, res) {
 
         case '/api/save-core-agent':
           return sendJson(res, 200, await managerService.saveCoreAgents(nodeId, data));
+
+        // Skills (skills/*/SKILL.md)
+        case '/api/save-skill':
+          return sendJson(res, 200, await managerService.saveSkill(nodeId, data));
+
+        case '/api/delete-skill':
+          return sendJson(res, 200, await managerService.deleteSkill(nodeId, data.id));
 
         // MCP Servers
         case '/api/save-mcp':

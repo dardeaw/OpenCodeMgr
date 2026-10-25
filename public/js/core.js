@@ -9,6 +9,7 @@ let nodeList = [];
 let currentNode = 'local';
 let state = {};
 let currentAgentId = null;
+let currentSkillId = null;
 let currentMcpId = null;
 let currentProviderId = null;
 let currentPluginFilename = null;
@@ -200,6 +201,18 @@ function ensureDefaultCardSelections() {
     selectAgent(targetAgentId);
   } else {
     const el = document.getElementById('agent-editor');
+    if (el) el.style.display = 'none';
+  }
+
+  // 1.5. Skills (#skills)
+  const skills = state.skills || [];
+  if (skills.length > 0) {
+    const targetSkillId = (currentSkillId && skills.some(s => s.id === currentSkillId)) ? currentSkillId : skills[0].id;
+    if (typeof selectSkill === 'function') {
+      selectSkill(targetSkillId);
+    }
+  } else {
+    const el = document.getElementById('skill-editor');
     if (el) el.style.display = 'none';
   }
 

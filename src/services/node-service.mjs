@@ -19,6 +19,7 @@ import {
   extractPluginSummary
 } from '../core/parsers.mjs';
 import { readNodeJsonc, readPluginScopes } from './shared-config.mjs';
+import { listSkills } from './skill-service.mjs';
 
 export function listNodes() {
   return loadNodes();
@@ -140,6 +141,13 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
   }
   pluginList.sort((a, b) => (a.order !== b.order ? a.order - b.order : a.filename.localeCompare(b.filename)));
 
+  let skillList = [];
+  try {
+    skillList = await listSkills(node.id);
+  } catch (e) {
+    console.warn(`[node-service] skill list fetch failed on ${node.id}:`, e.message);
+  }
+
   let providersMeta = { auth: {}, catalog: {} };
   try {
     providersMeta = await runDbHelperOnNode(node, ['providers-meta']);
@@ -160,6 +168,7 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
       ssh: { name: 'SSH_WORKFLOW.md', content: sshPrompt }
     },
     agents: agentList,
+    skills: skillList,
     plugins: pluginList,
     pluginScopes,
     tools

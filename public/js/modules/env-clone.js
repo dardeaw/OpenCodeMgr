@@ -9,6 +9,7 @@ const ALL_CLONE_MODULES = [
   { id: 'models_visibility', labelKey: 'modModelsVisibility', default: true },
   { id: 'auth', labelKey: 'modAuth', default: true },
   { id: 'agents', labelKey: 'modAgents', default: true },
+  { id: 'skills', labelKey: 'modSkills', default: true },
   { id: 'plugins', labelKey: 'modPlugins', default: true },
   { id: 'prompts', labelKey: 'modPrompts', default: true },
   { id: 'mcp', labelKey: 'modMcp', default: true },
@@ -328,6 +329,7 @@ function renderImportPreview(bundle, filename) {
   const comp = bundle.components || {};
 
   const agentCount = Array.isArray(comp.agents) ? comp.agents.length : 0;
+  const skillCount = Array.isArray(comp.skills) ? comp.skills.length : 0;
   const pluginCount = Array.isArray(comp.plugins) ? comp.plugins.length : 0;
   const provCount = comp.providers && comp.providers.provider ? Object.keys(comp.providers.provider).length : 0;
   const hasAuth = comp.auth && Object.keys(comp.auth).length > 0;
@@ -341,6 +343,7 @@ function renderImportPreview(bundle, filename) {
   document.getElementById('env-import-preview-summary').innerHTML = `
     <span>🧠 ${t('previewProviders')}: <strong>${provCount}</strong></span>
     <span>🤖 ${t('previewAgents')}: <strong>${agentCount}</strong></span>
+    <span>⚡ ${t('previewSkills')}: <strong>${skillCount}</strong></span>
     <span>🧩 ${t('previewPlugins')}: <strong>${pluginCount}</strong></span>
     <span>🔑 ${t('previewAuth')}: <strong>${hasAuth ? t('previewIncluded') : t('previewNone')}</strong></span>
     <span>💾 ${t('previewSqlite')}: <strong>${sqliteSizeStr}</strong></span>

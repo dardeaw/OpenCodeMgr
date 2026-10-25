@@ -177,6 +177,56 @@ export const MCP_TOOLS = [
     }
   },
   {
+    name: 'opencodemgr_list_skills',
+    description: 'List all OpenCode skills (skills/*/SKILL.md) configured on a node.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        node: { type: 'string', description: 'Node ID (default: "local").' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'opencodemgr_get_skill',
+    description: 'Get details and instructions of a specific OpenCode skill.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        node: { type: 'string', description: 'Node ID (default: "local").' },
+        id: { type: 'string', description: 'Skill ID / folder name (e.g. "git-release").' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'opencodemgr_save_skill',
+    description: 'Create or update an OpenCode skill (skills/<id>/SKILL.md).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        node: { type: 'string', description: 'Node ID (default: "local").' },
+        id: { type: 'string', description: 'Skill folder identifier (e.g. "docker-deploy").' },
+        name: { type: 'string', description: 'Skill display name.' },
+        description: { type: 'string', description: 'Short description displayed to AI agent.' },
+        content: { type: 'string', description: 'Markdown instructions body of SKILL.md.' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'opencodemgr_delete_skill',
+    description: 'Delete an OpenCode skill folder (skills/<id>/) from a node.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        node: { type: 'string', description: 'Node ID (default: "local").' },
+        id: { type: 'string', description: 'Skill folder identifier (e.g. "git-release").' }
+      },
+      required: ['id']
+    }
+  },
+  {
     name: 'opencodemgr_list_plugins',
     description: 'List all installed plugins (plugin/*.js), mount status, execution order, and per-agent role assignment scopes on a node.',
     inputSchema: {
@@ -341,6 +391,18 @@ export async function executeMcpTool(name, args = {}) {
 
     case 'opencodemgr_save_agent':
       return await managerService.saveAgent(nodeId, args);
+
+    case 'opencodemgr_list_skills':
+      return await managerService.listSkills(nodeId);
+
+    case 'opencodemgr_get_skill':
+      return await managerService.getSkill(nodeId, args.id);
+
+    case 'opencodemgr_save_skill':
+      return await managerService.saveSkill(nodeId, args);
+
+    case 'opencodemgr_delete_skill':
+      return await managerService.deleteSkill(nodeId, args.id);
 
     case 'opencodemgr_list_plugins': {
       const snap = await managerService.getNodeConfigSnapshot(nodeId);

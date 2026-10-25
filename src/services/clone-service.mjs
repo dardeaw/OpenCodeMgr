@@ -24,6 +24,7 @@ import {
   writePluginScopes
 } from './shared-config.mjs';
 import { getNodeConfigSnapshot } from './node-service.mjs';
+import { listSkills, saveSkill } from './skill-service.mjs';
 
 /**
  * Flush SQLite WAL journal into database file
@@ -142,6 +143,7 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
     'models_visibility',
     'auth',
     'agents',
+    'skills',
     'plugins',
     'prompts',
     'mcp',
@@ -197,6 +199,22 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
       filename: a.filename,
       content: a.fullContent || ''
     }));
+  }
+
+  // 4.5 Skills (skills/*/SKILL.md)
+  if (modules.includes('skills')) {
+    try {
+      const skills = await listSkills(sourceNodeId);
+      bundle.components.skills = skills.map(s => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        content: s.content || '',
+        raw: s.raw || ''
+      }));
+    } catch (sErr) {
+      console.warn(`[clone-service] Exporting skills failed for ${sourceNodeId}:`, sErr.message);
+    }
   }
 
   // 5. Plugins (plugin/*.js) & Scopes
@@ -376,6 +394,24 @@ export async function applyEnvironmentBundle(targetNodeId, bundle, options = {})
       await writeNodeFile(targetNode, targetAgentFile, finalContent, backupTarget);
     }
     appliedSummary.appliedModules.push('agents');
+  }
+
+  // 4.5 Skills (skills/*/SKILL.md)
+  if (selectedModules.includes('skills') && Array.isArray(bundle.components.skills)) {
+    for (const sk of bundle.components.skills) {
+      if (!sk || !sk.id) continue;
+      try {
+        await saveSkill(targetNode.id, {
+          id: sk.id,
+          name: sk.name,
+          description: sk.description,
+          content: tr(sk.content)
+        });
+      } catch (sErr) {
+        console.warn(`[clone-service] Restoring skill ${sk.id} failed on ${targetNode.id}:`, sErr.message);
+      }
+    }
+    appliedSummary.appliedModules.push('skills');
   }
 
   // 5. Plugins & Scopes
