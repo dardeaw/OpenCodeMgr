@@ -63,6 +63,7 @@ function selectSkill(id) {
   }
 
   editor.style.display = 'flex';
+  editor.style.flexDirection = 'column';
   document.getElementById('skill-editor-title').innerText = t('editSkillTitle') + ' : ' + (skill.name || skill.id);
   
   const idInput = document.getElementById('skill-id');
@@ -85,6 +86,7 @@ function createNewSkill() {
   if (!editor) return;
 
   editor.style.display = 'flex';
+  editor.style.flexDirection = 'column';
   document.getElementById('skill-editor-title').innerText = t('addSkillBtn');
 
   const idInput = document.getElementById('skill-id');

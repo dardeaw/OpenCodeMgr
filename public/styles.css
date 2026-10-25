@@ -134,6 +134,7 @@
     #sessions.tab-pane.active,
     #models.tab-pane.active,
     #agents.tab-pane.active,
+    #skills.tab-pane.active,
     #plugins.tab-pane.active,
     #tools.tab-pane.active,
     #raw-json.tab-pane.active {
@@ -144,22 +145,28 @@
     }
     #models > .sticky-selector-zone,
     #agents > .sticky-selector-zone,
+    #skills > .sticky-selector-zone,
     #plugins > .sticky-selector-zone {
       position: static;
       flex-shrink: 0;
     }
     #provider-editor,
     #agent-editor,
+    #skill-editor,
     #plugin-editor {
       flex: 1;
       min-height: 0;
       margin-bottom: 0;
+      display: flex;
       flex-direction: column;
       overflow: hidden;
     }
     #provider-editor > .card-title,
     #agent-editor > .card-title,
     #agent-editor > .row,
+    #skill-editor > .card-title,
+    #skill-editor > .row,
+    #skill-desc-container,
     #plugin-editor > .card-title,
     #plugin-editor > .row,
     #plugin-scope-agents-box {

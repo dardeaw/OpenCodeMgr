@@ -555,12 +555,14 @@
       </div>
 
       <!-- Skill Editor -->
-      <div class="card" id="skill-editor" style="display: none;">
+      <div class="card" id="skill-editor" style="display: none; border-color: #c084fc;">
         <div class="card-title">
-          <span id="skill-editor-title" data-i18n="editSkillTitle">編輯技能工作流</span>
-          <div>
-            <button class="btn btn-danger" id="btn-delete-skill" onclick="deleteCurrentSkill()" data-i18n="deleteSkillBtn">🗑️ 刪除技能</button>
-            <button class="btn btn-primary" onclick="saveCurrentSkill()" data-i18n="saveSkillBtn">💾 儲存技能</button>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="skill-editor-title" style="color: #c084fc; font-size: 15px;" data-i18n="editSkillTitle">編輯技能工作流</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-danger btn-sm" id="btn-delete-skill" onclick="deleteCurrentSkill()" data-i18n="deleteSkillBtn">🗑️ 刪除技能</button>
+            <button class="btn btn-primary btn-sm" onclick="saveCurrentSkill()" data-i18n="saveSkillBtn">💾 儲存技能</button>
           </div>
         </div>
 
@@ -575,14 +577,14 @@
           </div>
         </div>
 
-        <div style="margin-bottom: 12px;">
+        <div id="skill-desc-container" style="margin-bottom: 12px; flex-shrink: 0;">
           <label data-i18n="skillDescLabel">觸發情境與能力說明 (AI 啟動時讀取)</label>
-          <textarea id="skill-desc" data-i18n-placeholder="skillDescPh" placeholder="簡述此技能的觸發時機與主要功能..." style="min-height: 60px; height: 68px; resize: vertical; line-height: 1.45;"></textarea>
+          <textarea id="skill-desc" data-i18n-placeholder="skillDescPh" placeholder="簡述此技能的觸發時機與主要功能..." style="min-height: 58px; height: 64px; resize: vertical; line-height: 1.45;"></textarea>
         </div>
 
-        <div style="flex: 1; display: flex; flex-direction: column; min-height: 380px;">
-          <label data-i18n="skillContentLabel">SKILL.md 執行指令與詳細規範 (Markdown)</label>
-          <textarea id="skill-content" style="flex: 1; min-height: 340px; font-family: monospace; font-size: 12.5px; line-height: 1.5; resize: vertical;"></textarea>
+        <div style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+          <label data-i18n="skillContentLabel" style="flex-shrink: 0;">SKILL.md 執行指令與詳細規範 (Markdown)</label>
+          <textarea id="skill-content" style="flex: 1; min-height: 0; height: 100%; resize: none; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5;"></textarea>
         </div>
       </div>
     </div>
