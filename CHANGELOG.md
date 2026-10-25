@@ -4,6 +4,42 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.7.0] - 2026-10-25
+
+### ⚡ Specialized Skills Management (`skills/*/SKILL.md`)
+- **Native OpenCode Skill Support (agentskills.io Standard)**:
+  - Added full management for OpenCode skills stored in `<configDir>/skills/<id>/SKILL.md` with YAML frontmatter (`name`, `description`) and Markdown execution procedures.
+  - Positioned navigation tab (`⚡ 技能管理` / `⚡ Skills`) immediately following **🤖 角色管理** (`#agents`).
+- **Interactive Sticky Card Selector & Dedicated Editor**:
+  - Real-time instant search input filtering by skill ID, display name, and capability description.
+  - Fixed-height top sticky card grid with clean badges and selection indicators.
+  - Full-height vertical Markdown editor with monospace font, independent scroll area, and single-click save/delete.
+- **Built-in Exemplary Production Skills**:
+  - Included 3 battle-tested demonstration skills:
+    1. `git-release`: Automated SemVer version bump, changelog generation, git commit/tag, and push workflows.
+    2. `code-refactor`: Single Responsibility Principle (SRP), clean architectural layering, and zero-residual temp script verification.
+    3. `sqlite-optimizer`: SQLite WAL checkpoint truncate (`PRAGMA wal_checkpoint(TRUNCATE)`), session pruning, and database `VACUUM`.
+
+### 🔌 New Skill MCP Tools (23 MCP Tools Total)
+- Expanded the built-in MCP server to 23 tools, adding 4 dedicated skill tools:
+  - `opencodemgr_list_skills`: Enumerate all skills on local or remote nodes.
+  - `opencodemgr_get_skill`: Retrieve skill metadata, frontmatter, and full instructions body.
+  - `opencodemgr_save_skill`: Create or update skills with automatic folder creation and file backups.
+  - `opencodemgr_delete_skill`: Delete skill directories with automated `.bak` pre-deletion backups.
+
+### 🧬 Environment Clone & Backup Integration
+- Added `skills` (`⚡ 專業技能庫 skills/*/SKILL.md`) to the 12-component clone matrix.
+- Direct network cloning (`opencodemgr_clone_env`) and portable snapshot bundles (`opencodemgr_export_env` / `opencodemgr_import_env`) now replicate and restore skills seamlessly across Windows and Linux nodes.
+
+### 🌐 Pure 4-Language Localization (i18n)
+- 100% authentic localization across **Traditional Chinese (`zh-TW`)**, **Simplified Chinese (`zh-CN`)**, **English (`en-US`)**, and **Japanese (`ja-JP`)**.
+- Completely eliminated mixed bilingual pseudo-translations across the clone modal and skill management interface.
+
+### 🎨 UI Bug Fixes & Layout Architecture
+- Fixed `#skill-editor` layout squishing by adding flex-direction column and container height constraints to `public/styles.css` and `public/js/modules/skills.js`.
+
+---
+
 ## [v1.6.0] - 2026-10-25
 
 ### 🧬 OpenCode Environment Clone, Network Replication & Snapshot Backup
