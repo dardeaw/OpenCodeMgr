@@ -1,14 +1,21 @@
 // src/services/clone-service.mjs
 // Environment Bundle Export, Import, Network Clone & Cross-Platform Path Translation Service
 
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import zlib from 'node:zlib';
+import { pipeline } from 'node:stream/promises';
 import {
   getNode,
   getNodePaths,
   readNodeFile,
   writeNodeFile,
   backupNodeFile,
-  runDbHelperOnNode
+  runDbHelperOnNode,
+  runNodeCmd,
+  uploadToNode,
+  downloadFromNode
 } from '../core/node-transport.mjs';
 import {
   readNodeJsonc,
@@ -17,6 +24,60 @@ import {
   writePluginScopes
 } from './shared-config.mjs';
 import { getNodeConfigSnapshot } from './node-service.mjs';
+
+/**
+ * Flush SQLite WAL journal into database file
+ */
+export async function checkpointNodeDb(node) {
+  try {
+    await runDbHelperOnNode(node, ['checkpoint']);
+  } catch (e) {
+    console.warn(`[clone-service] Checkpoint failed on ${node.id}:`, e.message);
+  }
+}
+
+/**
+ * Extract node's opencode.db to a local destination file path
+ */
+export async function extractNodeDbToLocalFile(node, localDestPath) {
+  await checkpointNodeDb(node);
+  const srcPath = node.dbPath;
+  if (!srcPath) throw new Error(`Node ${node.id} has no dbPath configured.`);
+
+  if (node.type === 'local') {
+    if (!fs.existsSync(srcPath)) throw new Error(`Local SQLite db not found: ${srcPath}`);
+    fs.copyFileSync(srcPath, localDestPath);
+  } else {
+    const ok = await downloadFromNode(node, srcPath, localDestPath);
+    if (!ok || !fs.existsSync(localDestPath)) {
+      throw new Error(`Failed to download remote SQLite db from node ${node.id} (${srcPath})`);
+    }
+  }
+}
+
+/**
+ * Restore a local db file into a target node's opencode.db
+ */
+export async function restoreLocalFileToNodeDb(targetNode, localSrcPath, doBackup = true) {
+  const targetDbPath = targetNode.dbPath;
+  if (!targetDbPath) throw new Error(`Target node ${targetNode.id} has no dbPath configured.`);
+
+  if (doBackup) {
+    await backupNodeFile(targetNode, targetDbPath);
+  }
+
+  if (targetNode.type === 'local') {
+    const dir = path.dirname(targetDbPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    // Clear WAL and SHM to avoid database corruption or old locks
+    if (fs.existsSync(`${targetDbPath}-wal`)) fs.unlinkSync(`${targetDbPath}-wal`);
+    if (fs.existsSync(`${targetDbPath}-shm`)) fs.unlinkSync(`${targetDbPath}-shm`);
+    fs.copyFileSync(localSrcPath, targetDbPath);
+  } else {
+    await runNodeCmd(targetNode, `rm -f "${targetDbPath}-wal" "${targetDbPath}-shm" || true`);
+    await uploadToNode(targetNode, localSrcPath, targetDbPath);
+  }
+}
 
 /**
  * Smart Cross-Platform Path Translation
@@ -85,7 +146,8 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
     'prompts',
     'mcp',
     'tools',
-    'permissions'
+    'permissions',
+    'sqlite'
   ];
 
   const cfg = snapshot.config || {};
@@ -93,7 +155,7 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
 
   const bundle = {
     format: 'opencode-env-bundle',
-    version: '1.5.0',
+    version: '1.6.0',
     exportedAt: new Date().toISOString(),
     source: {
       id: node.id,
@@ -177,6 +239,35 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
   // 9. Bash Permissions
   if (modules.includes('permissions')) {
     bundle.components.permissions = (cfg.permission && cfg.permission.bash) || {};
+  }
+
+  // 10. SQLite Database (opencode.db)
+  if (modules.includes('sqlite')) {
+    const tempDb = path.join(os.tmpdir(), `oc_exp_db_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.db`);
+    const tempGz = `${tempDb}.gz`;
+    try {
+      await extractNodeDbToLocalFile(node, tempDb);
+      const stat = fs.statSync(tempDb);
+
+      await pipeline(
+        fs.createReadStream(tempDb),
+        zlib.createGzip({ level: 1 }),
+        fs.createWriteStream(tempGz)
+      );
+
+      const gzBuf = fs.readFileSync(tempGz);
+      bundle.components.sqlite = {
+        size: stat.size,
+        compressedSize: gzBuf.length,
+        gzipBase64: gzBuf.toString('base64'),
+        dbPath: node.dbPath || ''
+      };
+    } catch (dbErr) {
+      console.warn(`[clone-service] Exporting sqlite failed for ${sourceNodeId}:`, dbErr.message);
+    } finally {
+      if (fs.existsSync(tempDb)) fs.unlinkSync(tempDb);
+      if (fs.existsSync(tempGz)) fs.unlinkSync(tempGz);
+    }
   }
 
   return bundle;
@@ -371,6 +462,30 @@ export async function applyEnvironmentBundle(targetNodeId, bundle, options = {})
     appliedSummary.appliedModules.push('permissions');
   }
 
+  // 10. SQLite Database (opencode.db)
+  if (selectedModules.includes('sqlite') && bundle.components.sqlite && bundle.components.sqlite.gzipBase64) {
+    const tempGz = path.join(os.tmpdir(), `oc_imp_gz_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.gz`);
+    const tempDb = path.join(os.tmpdir(), `oc_imp_db_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.db`);
+    try {
+      const gzBuf = Buffer.from(bundle.components.sqlite.gzipBase64, 'base64');
+      fs.writeFileSync(tempGz, gzBuf);
+
+      await pipeline(
+        fs.createReadStream(tempGz),
+        zlib.createGunzip(),
+        fs.createWriteStream(tempDb)
+      );
+
+      await restoreLocalFileToNodeDb(targetNode, tempDb, backupTarget);
+      appliedSummary.appliedModules.push('sqlite');
+    } catch (dbErr) {
+      console.warn(`[clone-service] Restoring sqlite failed for ${targetNodeId}:`, dbErr.message);
+    } finally {
+      if (fs.existsSync(tempGz)) fs.unlinkSync(tempGz);
+      if (fs.existsSync(tempDb)) fs.unlinkSync(tempDb);
+    }
+  }
+
   return { ok: true, summary: appliedSummary };
 }
 
@@ -384,23 +499,60 @@ export async function cloneNodeToNode(sourceNodeId, targetNodeIds, options = {})
     throw new Error('No valid destination target nodes specified');
   }
 
-  // 1. Export bundle from source node
-  const bundle = await exportEnvironmentBundle(sourceNodeId, options.modules || null);
+  const sourceNode = getNode(sourceNodeId);
+  const requestedModules = options.modules || null;
+  const cloneSqlite = !requestedModules || requestedModules.includes('sqlite');
 
-  // 2. Apply to each target node sequentially
-  const results = [];
-  for (const tid of targets) {
+  // If cloning sqlite, extract source db once to local temp file to avoid giant base64 serialization in JSON bundle
+  let tempCloneSourceDb = null;
+  if (cloneSqlite) {
+    tempCloneSourceDb = path.join(os.tmpdir(), `oc_clone_src_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.db`);
     try {
-      const res = await applyEnvironmentBundle(tid, bundle, options);
-      results.push({ targetNode: tid, ok: true, ...res.summary });
-    } catch (err) {
-      results.push({ targetNode: tid, ok: false, error: err.message });
+      await extractNodeDbToLocalFile(sourceNode, tempCloneSourceDb);
+    } catch (dbExtractErr) {
+      console.warn(`[clone-service] Extracting source sqlite db failed for ${sourceNodeId}:`, dbExtractErr.message);
+      tempCloneSourceDb = null;
     }
   }
 
-  return {
-    ok: results.every(r => r.ok),
-    sourceNode: sourceNodeId,
-    results
-  };
+  try {
+    // 1. Export configuration bundle (excluding sqlite from JSON since we stream/transfer directly)
+    const configModules = requestedModules ? requestedModules.filter(m => m !== 'sqlite') : null;
+    const bundle = await exportEnvironmentBundle(sourceNodeId, configModules);
+
+    // 2. Apply to each target node sequentially
+    const results = [];
+    for (const tid of targets) {
+      try {
+        const targetNode = getNode(tid);
+        const res = await applyEnvironmentBundle(tid, bundle, options);
+
+        // If sqlite is selected and extracted, restore directly to target
+        if (cloneSqlite && tempCloneSourceDb && fs.existsSync(tempCloneSourceDb)) {
+          try {
+            await restoreLocalFileToNodeDb(targetNode, tempCloneSourceDb, options.backupTarget !== false);
+            if (!res.summary.appliedModules.includes('sqlite')) {
+              res.summary.appliedModules.push('sqlite');
+            }
+          } catch (dbRestoreErr) {
+            console.warn(`[clone-service] Restoring sqlite to ${tid} failed:`, dbRestoreErr.message);
+          }
+        }
+
+        results.push({ targetNode: tid, ok: true, ...res.summary });
+      } catch (err) {
+        results.push({ targetNode: tid, ok: false, error: err.message });
+      }
+    }
+
+    return {
+      ok: results.every(r => r.ok),
+      sourceNode: sourceNodeId,
+      results
+    };
+  } finally {
+    if (tempCloneSourceDb && fs.existsSync(tempCloneSourceDb)) {
+      try { fs.unlinkSync(tempCloneSourceDb); } catch {}
+    }
+  }
 }

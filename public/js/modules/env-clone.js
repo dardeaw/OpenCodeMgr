@@ -13,7 +13,8 @@ const ALL_CLONE_MODULES = [
   { id: 'prompts', labelKey: 'modPrompts', default: true },
   { id: 'mcp', labelKey: 'modMcp', default: true },
   { id: 'tools', labelKey: 'modTools', default: true },
-  { id: 'permissions', labelKey: 'modPermissions', default: true }
+  { id: 'permissions', labelKey: 'modPermissions', default: true },
+  { id: 'sqlite', labelKey: 'modSqlite', default: true }
 ];
 
 // ============================================================================
@@ -330,6 +331,8 @@ function renderImportPreview(bundle, filename) {
   const pluginCount = Array.isArray(comp.plugins) ? comp.plugins.length : 0;
   const provCount = comp.providers && comp.providers.provider ? Object.keys(comp.providers.provider).length : 0;
   const hasAuth = comp.auth && Object.keys(comp.auth).length > 0;
+  const hasSqlite = comp.sqlite && comp.sqlite.gzipBase64;
+  const sqliteSizeStr = hasSqlite ? (comp.sqlite.size ? formatBytes(comp.sqlite.size) : t('previewIncluded')) : t('previewNone');
 
   document.getElementById('env-import-preview-name').innerText = filename;
   document.getElementById('env-import-preview-meta').innerText =
@@ -340,6 +343,7 @@ function renderImportPreview(bundle, filename) {
     <span>🤖 ${t('previewAgents')}: <strong>${agentCount}</strong></span>
     <span>🧩 ${t('previewPlugins')}: <strong>${pluginCount}</strong></span>
     <span>🔑 ${t('previewAuth')}: <strong>${hasAuth ? t('previewIncluded') : t('previewNone')}</strong></span>
+    <span>💾 ${t('previewSqlite')}: <strong>${sqliteSizeStr}</strong></span>
   `;
 }
 

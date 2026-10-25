@@ -127,6 +127,7 @@ export const I18N = {
     modMcp: '🔌 MCP 擴充伺服器設定 (opencode.jsonc mcp)',
     modTools: '🛠️ 工具精簡設定 (plugin/trim-tools.js)',
     modPermissions: '🛡️ Bash 權限規則 (permission.bash)',
+    modSqlite: '💾 SQLite 對話資料庫 (opencode.db 對話與歷程記錄)',
     alertNoTargets: '請至少勾選一個接收複製的目標節點！',
     alertNoModules: '請至少勾選一項要複製或匯出的環境項目！',
     alertNoImportFile: '請先選取要還原匯入的快照檔案 (.json)！',
@@ -157,6 +158,7 @@ export const I18N = {
     previewBackupDisabled: '未啟用',
     previewCloneSuccess: '✓ 對拷成功',
     previewCloneFailed: '✕ 失敗',
+    previewSqlite: '對話資料庫',
     localNode: '💻 本機',
     localTag: '本機',
 
@@ -635,6 +637,7 @@ export const I18N = {
     modMcp: '🔌 MCP 扩展服务器配置 (opencode.jsonc mcp)',
     modTools: '🛠️ 工具精简配置 (plugin/trim-tools.js)',
     modPermissions: '🛡️ Bash 权限规则 (permission.bash)',
+    modSqlite: '💾 SQLite 对话数据库 (opencode.db 对话与历程记录)',
     alertNoTargets: '请至少勾选一个接收复制的目标节点！',
     alertNoModules: '请至少勾选一项要复制或导出的环境项目！',
     alertNoImportFile: '请先选择要还原导入的快照文件 (.json)！',
@@ -665,6 +668,7 @@ export const I18N = {
     previewBackupDisabled: '未启用',
     previewCloneSuccess: '✓ 对拷成功',
     previewCloneFailed: '✕ 失败',
+    previewSqlite: '对话数据库',
     localNode: '💻 本机',
     localTag: '本机',
 
@@ -1143,6 +1147,7 @@ export const I18N = {
     modMcp: '🔌 MCP Servers Configuration (opencode.jsonc mcp)',
     modTools: '🛠️ Tool Trimming Rules (plugin/trim-tools.js)',
     modPermissions: '🛡️ Bash Execution Permissions (permission.bash)',
+    modSqlite: '💾 SQLite Session Database (opencode.db Conversations & History)',
     alertNoTargets: 'Please select at least one destination target node!',
     alertNoModules: 'Please select at least one component to clone or export!',
     alertNoImportFile: 'Please choose an environment snapshot file (.json) first!',
@@ -1173,6 +1178,7 @@ export const I18N = {
     previewBackupDisabled: 'Disabled',
     previewCloneSuccess: '✓ Clone Succeeded',
     previewCloneFailed: '✕ Failed',
+    previewSqlite: 'Session Database',
     localNode: '💻 Localhost',
     localTag: 'Local',
 
@@ -1651,6 +1657,7 @@ export const I18N = {
     modMcp: '🔌 MCP サーバー設定 (opencode.jsonc mcp)',
     modTools: '🛠️ ツール簡易化設定 (plugin/trim-tools.js)',
     modPermissions: '🛡️ Bash 実行権限ルール (permission.bash)',
+    modSqlite: '💾 SQLite 対話データベース (opencode.db 会話・履歴データ)',
     alertNoTargets: 'ターゲットノードを1つ以上選択してください！',
     alertNoModules: '複製または出力するコンポーネントを1つ以上選択してください！',
     alertNoImportFile: '復元するスナップショットファイル (.json) を選択してください！',
@@ -1681,6 +1688,7 @@ export const I18N = {
     previewBackupDisabled: '無効',
     previewCloneSuccess: '✓ 複製成功',
     previewCloneFailed: '✕ 失敗',
+    previewSqlite: '対話データベース',
     localNode: '💻 ローカル',
     localTag: 'ローカル',
 

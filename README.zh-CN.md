@@ -20,7 +20,7 @@
 - **跨平台智能路径转译（Smart Path Translation）**：自动判断 Windows (`C:\Users\馮\.config\opencode\...`) 与 Linux (`/home/dardeaw/.config/opencode/...`) 目录结构与斜杠 (`\` 与 `/`)，转译后无缝对接无死链接。
 - **保留目标主机专属 BaseURL（Target BaseURL Preservation）**：智能保留目标主机原有的供应商端点连接（例如本机走 SSH Tunnel `127.0.0.1:18200`，远程走 Tailscale IP `100.103.82.28:18200`），避免克隆后推理中断。
 - **执行前自动安全备份（Auto-Backup）**：覆写前自动在目标主机创建 `.bak-YYYYMMDD_HHMMSS` 时间戳备份文件，确保配置安全无虞。
-- **十维度细粒度勾选矩阵**：可自由独立勾选克隆：供应商配置、模型可见度开关、认证密钥 (`auth.json`)、代理角色 (`agent/*.md`)、外挂插件 (`plugin/*.js`)、外挂角色作用范围、系统提示词、MCP 服务器、工具权限矩阵、Bash 执行权限。
+- **十一维度细粒度勾选矩阵（含 SQLite 对话库）**：可自由独立勾选克隆：供应商配置、模型可见度开关、认证密钥 (`auth.json`)、代理角色 (`agent/*.md`)、外挂插件 (`plugin/*.js`)、外挂角色作用范围、系统提示词、MCP 服务器、工具权限矩阵、Bash 执行权限，以及 **SQLite 对话数据库 (`opencode.db`)**。对拷复制自动保留备份，导出封装采用极简流式压缩打包为单一完整快照包。
 
 ### 2. 🧠 模型与供应商管理（完整对齐 OpenCode `/models` 与 `/connect` 逻辑）
 - **关键字模糊搜索下拉框（Fuzzy-Search Combobox）**：所有模型指派字段（主模型 `model`、轻量模型 `small_model`、自动命名 `agent.title.model`、上下文压缩 `agent.compaction.model` 与各角色专属模型）均内置实时关键字模糊搜索，自动按「⭐ 已配置模型」、「✨ OpenCode Zen」、「🚀 OpenCode Go」、「🔗 已认证供应商」分组显示。

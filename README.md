@@ -20,7 +20,7 @@ Cross-Platform GUI & MCP Management Suite for **OpenCode** — managing Environm
 - **Smart Cross-Platform Path Translation**: Automatically translates paths between Windows (`C:\Users\馮\.config\opencode\...`) and Linux (`/home/dardeaw/.config/opencode/...`), normalizing path separators (`\` vs `/`) and user directories.
 - **Target BaseURL Preservation**: Preserves target-specific endpoints (e.g. local SSH tunnel `127.0.0.1:18200` vs tailnet `100.103.82.28:18200`) so network cloning never breaks model inference.
 - **Pre-Execution Safe Auto-Backup**: Creates `.bak-YYYYMMDD_HHMMSS` backups on the target host before applying any file changes.
-- **10-Component Granular Selection**: Pick and choose exactly what to clone or export: Providers & Options, Models Visibility, Provider Credentials (`auth.json`), Custom Agents (`agent/*.md`), Plugins (`plugin/*.js`), Plugin Scopes, System Prompts, MCP Servers, Tools, and Bash Permissions.
+- **11-Component Granular Selection (with SQLite opencode.db)**: Pick and choose exactly what to clone or export: Providers & Options, Models Visibility, Provider Credentials (`auth.json`), Custom Agents (`agent/*.md`), Plugins (`plugin/*.js`), Plugin Scopes, System Prompts, MCP Servers, Tools, Bash Permissions, and **SQLite Session Database (`opencode.db`)** with streaming compression and automatic target backups.
 
 ### 2. 🧠 Models & Providers Management (`/models` & `/connect` Parity)
 - **Global Model Assignment**: Configure `model` (Primary), `small_model` (Lightweight helper), `agent.title.model` (Auto-title), and `agent.compaction.model` (Context compaction) with instant **Keyword Fuzzy-Search Combobox Dropdowns**.

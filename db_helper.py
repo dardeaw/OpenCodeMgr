@@ -306,6 +306,17 @@ def vacuum_db():
     conn.close()
     return {"ok": True}
 
+def checkpoint_db():
+    db_path = get_db_path()
+    if os.path.exists(db_path):
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.close()
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+    return {"ok": True}
+
 def get_auth_path():
     if "OPENCODE_AUTH_PATH" in os.environ and os.environ["OPENCODE_AUTH_PATH"]:
         return os.environ["OPENCODE_AUTH_PATH"]
@@ -592,6 +603,8 @@ if __name__ == '__main__':
         print(json.dumps(clean_session(sid, opts), ensure_ascii=False))
     elif action == 'vacuum':
         print(json.dumps(vacuum_db(), ensure_ascii=False))
+    elif action == 'checkpoint':
+        print(json.dumps(checkpoint_db(), ensure_ascii=False))
     elif action == 'providers-meta':
         print(json.dumps(get_providers_meta(), ensure_ascii=False))
     elif action == 'catalog-models':

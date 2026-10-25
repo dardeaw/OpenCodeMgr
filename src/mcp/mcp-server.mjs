@@ -222,7 +222,7 @@ export const MCP_TOOLS = [
   },
   {
     name: 'opencodemgr_export_env',
-    description: 'Export a portable OpenCode environment bundle from a node (providers, models, auth, agents, plugins, scopes, prompts, MCP, tools, permissions).',
+    description: 'Export a portable OpenCode environment bundle from a node (providers, models, auth, agents, plugins, scopes, prompts, MCP, tools, permissions, sqlite).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -230,7 +230,7 @@ export const MCP_TOOLS = [
         modules: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional subset of modules to export (e.g. ["providers", "agents", "plugins", "auth"]). Defaults to all.'
+          description: 'Optional subset of modules to export (e.g. ["providers", "agents", "plugins", "auth", "sqlite"]). Defaults to all.'
         }
       },
       required: []

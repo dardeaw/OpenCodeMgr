@@ -101,7 +101,23 @@ export async function uploadToNode(node, localPath, remotePath) {
     fs.copyFileSync(localPath, remotePath);
   } else {
     const pyCmd = `python "${RUN_SSH_SCRIPT}" ${node.ip} --upload "${localPath}" "${remotePath}"`;
-    await execAsync(pyCmd, { encoding: 'utf-8', timeout: 20000 });
+    await execAsync(pyCmd, { encoding: 'utf-8', timeout: 30000 });
+  }
+}
+
+export async function downloadFromNode(node, remotePath, localPath) {
+  const dir = path.dirname(localPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (node.type === 'local') {
+    if (fs.existsSync(remotePath)) {
+      fs.copyFileSync(remotePath, localPath);
+      return true;
+    }
+    return false;
+  } else {
+    const pyCmd = `python "${RUN_SSH_SCRIPT}" ${node.ip} --download "${remotePath}" "${localPath}"`;
+    await execAsync(pyCmd, { encoding: 'utf-8', timeout: 30000 });
+    return fs.existsSync(localPath);
   }
 }
 

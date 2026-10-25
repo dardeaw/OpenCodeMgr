@@ -18,7 +18,7 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
   - Intelligent preservation mode ensures target-specific provider endpoints (e.g. local SSH tunnel `127.0.0.1:18200` vs tailnet `100.103.82.28:18200`) remain functional after cloning or restoring configurations.
 - **Pre-Execution Safe Auto-Backup (`自動備份安全防護`)**:
   - Automatically creates timestamped backups (`.bak-YYYYMMDD_HHMMSS`) of `opencode.jsonc` and `auth.json` on the destination node before writing changes, preventing any accidental data loss.
-- **Granular 10-Component Module Matrix**:
+- **Granular 11-Component Module Matrix (including SQLite opencode.db)**:
   - Full modular checkboxes to independently clone/export/import:
     1. **Providers & Options** (`opencode.jsonc` provider configuration)
     2. **Model Visibility & Status** (desktop `opencode.global.dat` & whitelist/blacklist)
@@ -30,6 +30,7 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
     8. **MCP Servers** (`opencode.jsonc` `"mcp"`)
     9. **Tools Permissions Matrix** (`tools` block)
     10. **Bash Execution Permissions** (`permissions` block)
+    11. **SQLite Session Database** (`opencode.db` conversation & message history with WAL checkpoint flush, streaming gzip compression, and target pre-backup)
 
 ### 🔌 New MCP Tools (19 Tools Total)
 - Added 3 new Model Context Protocol tools for AI agent automation:
