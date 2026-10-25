@@ -1,4 +1,4 @@
-# OpenCodeMgr (v1.7.0)
+# OpenCodeMgr (v1.8.0)
 
 > Complete Cross-Platform GUI & MCP Management Suite for **OpenCode (`opencode-ai`)** — Native **Specialized Skills Management (`skills/*/SKILL.md`)**, **Multi-Host Environment Network Replication & Snapshot Backup**, **Models & Providers Visual Configuration**, **Per-Agent Plugin Routing (`plugin/*.js`)**, **Custom Agent Roles (`agent/*.md`)**, **23 Built-in MCP Tools**, and **Deep SQLite Session Maintenance**.
 

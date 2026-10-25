@@ -70,13 +70,29 @@ def get_sessions(workspace_filter=None):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
-    query = """
+    cur.execute("PRAGMA table_info(session)")
+    session_cols = {col[1] for col in cur.fetchall()}
+    has_agent = "agent" in session_cols
+    has_version = "version" in session_cols
+    has_reasoning = "tokens_reasoning" in session_cols
+    has_cost = "cost" in session_cols
+
+    agent_sel = "COALESCE(s.agent, '')" if has_agent else "''"
+    ver_sel = "COALESCE(s.version, '')" if has_version else "''"
+    reasoning_sel = "COALESCE(s.tokens_reasoning, 0)" if has_reasoning else "0"
+    cost_sel = "COALESCE(s.cost, 0.0)" if has_cost else "0.0"
+
+    query = f"""
         SELECT s.id, s.title, s.directory, s.model, s.time_created, s.time_updated,
                s.tokens_input, s.tokens_output,
                (SELECT COUNT(*) FROM message m WHERE m.session_id = s.id) as msg_count,
                (SELECT COUNT(*) FROM part p WHERE p.session_id = s.id) as part_count,
                s.parent_id,
-               COALESCE((SELECT SUM(length(p.data)) FROM part p WHERE p.session_id = s.id), 0) as size_bytes
+               COALESCE((SELECT SUM(length(p.data)) FROM part p WHERE p.session_id = s.id), 0) as size_bytes,
+               {agent_sel} as agent,
+               {ver_sel} as version,
+               {reasoning_sel} as tokens_reasoning,
+               {cost_sel} as cost
         FROM session s
     """
     params = []
@@ -109,7 +125,11 @@ def get_sessions(workspace_filter=None):
             "message_count": r[8] or 0,
             "part_count": r[9] or 0,
             "parent_id": r[10] or "",
-            "size_bytes": r[11] or 0
+            "size_bytes": r[11] or 0,
+            "agent": r[12] or "",
+            "version": r[13] or "",
+            "tokens_reasoning": r[14] or 0,
+            "cost": float(r[15] or 0.0)
         })
 
     conn.close()
@@ -120,7 +140,19 @@ def get_session_detail(session_id):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
-    cur.execute("SELECT id, title, directory, model, time_created, time_updated FROM session WHERE id=?", (session_id,))
+    cur.execute("PRAGMA table_info(session)")
+    session_cols = {col[1] for col in cur.fetchall()}
+    has_agent = "agent" in session_cols
+    has_version = "version" in session_cols
+    has_reasoning = "tokens_reasoning" in session_cols
+    has_cost = "cost" in session_cols
+
+    agent_sel = "COALESCE(agent, '')" if has_agent else "''"
+    ver_sel = "COALESCE(version, '')" if has_version else "''"
+    reasoning_sel = "COALESCE(tokens_reasoning, 0)" if has_reasoning else "0"
+    cost_sel = "COALESCE(cost, 0.0)" if has_cost else "0.0"
+
+    cur.execute(f"SELECT id, title, directory, model, time_created, time_updated, parent_id, {agent_sel}, {ver_sel}, {reasoning_sel}, {cost_sel} FROM session WHERE id=?", (session_id,))
     s_row = cur.fetchone()
     if not s_row:
         conn.close()
@@ -132,7 +164,12 @@ def get_session_detail(session_id):
         "directory": s_row[2],
         "model": s_row[3],
         "time_created": s_row[4],
-        "time_updated": s_row[5]
+        "time_updated": s_row[5],
+        "parent_id": s_row[6] or "",
+        "agent": s_row[7] or "",
+        "version": s_row[8] or "",
+        "tokens_reasoning": s_row[9] or 0,
+        "cost": float(s_row[10] or 0.0)
     }
 
     # Fetch messages

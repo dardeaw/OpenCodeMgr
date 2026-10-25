@@ -4,6 +4,21 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.8.0] - 2026-10-25
+
+### 🚀 OpenCode 2.0 Full Compatibility & 1.x Backward Compatibility (雙軌兼備)
+- **OpenCode 2.0 Architecture Ready**:
+  - **Dual Configuration Synchronisation**: Extended the Environment Clone Matrix to 13 components, adding native support for OpenCode 2.0's global `cli.json` (`cli_config`) while maintaining seamless backward compatibility for OpenCode 1.x's `tui.json` (`tui_config`).
+  - **Node OpenCode Version Introspection**: Automatically probes and detects OpenCode CLI and Desktop runtime versions across local and remote SSH nodes (`1.19.4` / `2.0.x`), surfacing compatibility flags and v2 readiness badges.
+  - **Dynamic SQLite Schema Introspection**: Upgraded `db_helper.py` to introspect SQLite `session` table columns dynamically via `PRAGMA table_info(session)`. Gracefully supports reasoning tokens (`tokens_reasoning`), estimated cost (`cost`), agent identity (`agent`), and schema version (`version`) with zero breakage on older databases.
+  - **Enhanced Session Telemetry UI**:
+    - Surfaces agent pills (`🤖 <agent>`) and v2 tags (`v2`) directly in the conversation tree.
+    - Token summary column displays reasoning tokens (`🧠 <N>`) and cost attribution (`$<amount>`).
+    - Standardized all storage and conversation footprint metrics uniformly to **`MB`** (with 3-decimal precision for micro-files).
+  - **Complete 4-Language i18n**: All new OpenCode 2.0 badges, configuration matrix items, and telemetry metrics translated across Traditional Chinese (`zh-TW`), Simplified Chinese (`zh-CN`), English (`en`), and Japanese (`ja-JP`).
+
+---
+
 ## [v1.7.0] - 2026-10-25
 
 ### ⚡ Specialized Skills Management (`skills/*/SKILL.md`)

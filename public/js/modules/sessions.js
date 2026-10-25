@@ -146,6 +146,22 @@ function appendSessionRow(tbody, s, isChild = false, hasChildren = false, isExpa
   const tr = document.createElement('tr');
   const totalTokens = ((s.tokens_input || 0) + (s.tokens_output || 0)).toLocaleString();
 
+  const agentBadge = s.agent && s.agent !== 'build' && s.agent !== 'default'
+    ? `<span style="font-size: 9.5px; color: #38bdf8; background: rgba(56,189,248,0.12); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(56,189,248,0.25); margin-left: 6px;">🤖 ${escapeHtml(s.agent)}</span>`
+    : '';
+
+  const versionBadge = (s.version && (s.version.startsWith('2.') || s.version.startsWith('v2.')))
+    ? `<span style="font-size: 9px; color: #10b981; background: rgba(16,185,129,0.15); padding: 1px 5px; border-radius: 4px; border: 1px solid rgba(16,185,129,0.3); margin-left: 6px;" title="${t('v2Badge')}">v2</span>`
+    : '';
+
+  let tokenHtml = `<div style="font-size: 11.5px; color: var(--purple); font-weight: 500;">${totalTokens}</div>`;
+  if (s.tokens_reasoning > 0) {
+    tokenHtml += `<div style="font-size: 9.5px; color: #a855f7; margin-top: 1px;" title="${t('reasoningTokens')}">🧠 ${Number(s.tokens_reasoning).toLocaleString()}</div>`;
+  }
+  if (s.cost > 0) {
+    tokenHtml += `<div style="font-size: 9.5px; color: #10b981; margin-top: 1px;" title="${t('costLbl')}">$${Number(s.cost).toFixed(3)}</div>`;
+  }
+
   if (isChild) {
     tr.className = 'subagent-row subagent-of-' + s.parent_id;
     tr.style.display = isExpanded ? '' : 'none';
@@ -160,6 +176,8 @@ function appendSessionRow(tbody, s, isChild = false, hasChildren = false, isExpa
         <span style="color: #8b5cf6; font-family: var(--font-mono); font-weight: bold; margin-right: 8px;">└── 🤖</span>
         <span style="font-weight: 500; color: #cbd5e1; cursor: pointer; font-size: 13px;" onclick="openDetail('${escapeAttr(s.id)}')">${escapeHtml(s.title)}</span>
         <span style="font-size: 9.5px; color: #a78bfa; background: rgba(167,139,250,0.15); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(167,139,250,0.3); margin-left: 8px;">Subagent</span>
+        ${agentBadge}
+        ${versionBadge}
       </div>
       <div style="padding-left: 56px; font-size: 10px; color: #64748b; font-family: var(--font-mono); margin-top: 2px;">${escapeHtml(s.id)}</div>
     `;
@@ -177,6 +195,8 @@ function appendSessionRow(tbody, s, isChild = false, hasChildren = false, isExpa
         ${caret}
         <span style="font-weight: 600; color: #fff; cursor: pointer; font-size: 13.5px;" onclick="openDetail('${escapeAttr(s.id)}')">${escapeHtml(s.title)}</span>
         ${subagentTag}
+        ${agentBadge}
+        ${versionBadge}
       </div>
       <div style="padding-left: 28px; font-size: 10.5px; color: #64748b; font-family: var(--font-mono); margin-top: 2px;">${escapeHtml(s.id)}</div>
     `;
@@ -208,7 +228,7 @@ function appendSessionRow(tbody, s, isChild = false, hasChildren = false, isExpa
       <span style="color: var(--accent);">${s.message_count} ${t('msgUnit')}</span> / 
       <span style="color: var(--text-muted);">${s.part_count} parts</span>
     </td>
-    <td style="font-size: 11.5px; color: var(--purple);">${totalTokens}</td>
+    <td>${tokenHtml}</td>
     <td style="text-align: right; white-space: nowrap;">
       <button class="btn btn-sm" onclick="openDetail('${escapeAttr(s.id)}')">${t('viewBtn')}</button>
       <button class="btn btn-sm" style="border-color: #f59e0b; color: #fbbf24;" onclick="openCleanModal('${escapeAttr(s.id)}', '${escapeAttr(s.title)}')">${t('cleanBtn')}</button>

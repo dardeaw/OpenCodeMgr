@@ -157,7 +157,7 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
 
   const bundle = {
     format: 'opencode-env-bundle',
-    version: '1.7.0',
+    version: '1.8.0',
     exportedAt: new Date().toISOString(),
     source: {
       id: node.id,
@@ -259,7 +259,31 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
     bundle.components.permissions = (cfg.permission && cfg.permission.bash) || {};
   }
 
-  // 10. SQLite Database (opencode.db)
+  // 10. OpenCode 2.0 CLI Configuration (cli.json)
+  if (modules.includes('cli_config')) {
+    try {
+      const rawCli = await readNodeFile(node, paths.cliFile);
+      if (rawCli) {
+        bundle.components.cliConfig = { raw: rawCli };
+      }
+    } catch (e) {
+      console.warn(`[clone-service] Export cli.json failed for ${sourceNodeId}:`, e.message);
+    }
+  }
+
+  // 11. OpenCode 1.x TUI Configuration (tui.json, Backward Compatible)
+  if (modules.includes('tui_config')) {
+    try {
+      const rawTui = await readNodeFile(node, paths.tuiFile);
+      if (rawTui) {
+        bundle.components.tuiConfig = { raw: rawTui };
+      }
+    } catch (e) {
+      console.warn(`[clone-service] Export tui.json failed for ${sourceNodeId}:`, e.message);
+    }
+  }
+
+  // 12. SQLite Database (opencode.db)
   if (modules.includes('sqlite')) {
     const tempDb = path.join(os.tmpdir(), `oc_exp_db_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.db`);
     const tempGz = `${tempDb}.gz`;
@@ -498,7 +522,27 @@ export async function applyEnvironmentBundle(targetNodeId, bundle, options = {})
     appliedSummary.appliedModules.push('permissions');
   }
 
-  // 10. SQLite Database (opencode.db)
+  // 10. OpenCode 2.0 CLI Configuration (cli.json)
+  if (selectedModules.includes('cli_config') && bundle.components.cliConfig && bundle.components.cliConfig.raw) {
+    try {
+      await writeNodeFile(targetNode, targetPaths.cliFile, tr(bundle.components.cliConfig.raw), backupTarget);
+      appliedSummary.appliedModules.push('cli_config');
+    } catch (e) {
+      console.warn(`[clone-service] Restoring cli.json failed on ${targetNodeId}:`, e.message);
+    }
+  }
+
+  // 11. OpenCode 1.x TUI Configuration (tui.json, Backward Compatible)
+  if (selectedModules.includes('tui_config') && bundle.components.tuiConfig && bundle.components.tuiConfig.raw) {
+    try {
+      await writeNodeFile(targetNode, targetPaths.tuiFile, tr(bundle.components.tuiConfig.raw), backupTarget);
+      appliedSummary.appliedModules.push('tui_config');
+    } catch (e) {
+      console.warn(`[clone-service] Restoring tui.json failed on ${targetNodeId}:`, e.message);
+    }
+  }
+
+  // 12. SQLite Database (opencode.db)
   if (selectedModules.includes('sqlite') && bundle.components.sqlite && bundle.components.sqlite.gzipBase64) {
     const tempGz = path.join(os.tmpdir(), `oc_imp_gz_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.gz`);
     const tempDb = path.join(os.tmpdir(), `oc_imp_db_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.db`);

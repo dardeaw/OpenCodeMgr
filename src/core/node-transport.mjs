@@ -72,6 +72,8 @@ export function getNodePaths(node) {
     sep,
     configDir,
     cfgFile: `${configDir}${sep}opencode.jsonc`,
+    cliFile: `${configDir}${sep}cli.json`,
+    tuiFile: `${configDir}${sep}tui.json`,
     promptLocal: `${configDir}${sep}AGENTS.local.md`,
     promptGlobal: `${configDir}${sep}AGENTS.md`,
     promptSsh: `${configDir}${sep}SSH_WORKFLOW.md`,
@@ -197,5 +199,29 @@ export async function runDbHelperOnNode(node, args) {
     const cmd = `${envPrefix}python3 "${remoteHelper}" ${quotedArgs.join(' ')}`;
     const out = await runNodeCmd(node, cmd);
     return JSON.parse(out.trim());
+  }
+}
+
+/**
+ * Detect OpenCode version running on a node and return compatibility flags
+ */
+export async function detectNodeOpenCodeVersion(node) {
+  try {
+    if (node.type === 'local') {
+      let ver = '1.19.4';
+      try {
+        const { stdout } = await execAsync('opencode --version', { timeout: 3000 });
+        if (stdout && stdout.trim()) ver = stdout.trim();
+      } catch {}
+      const isV2 = ver.startsWith('2.') || ver.startsWith('v2.');
+      return { version: ver, isV2, v2Ready: true };
+    } else {
+      const out = await runNodeCmd(node, 'opencode --version 2>/dev/null || ~/.opencode/bin/opencode --version 2>/dev/null || echo "1.19.4"');
+      const ver = (out || '').trim().split(/\r?\n/).pop().trim() || '1.19.4';
+      const isV2 = ver.startsWith('2.') || ver.startsWith('v2.');
+      return { version: ver, isV2, v2Ready: true };
+    }
+  } catch (err) {
+    return { version: '1.19.4', isV2: false, v2Ready: true };
   }
 }

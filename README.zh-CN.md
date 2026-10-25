@@ -1,4 +1,4 @@
-# OpenCodeMgr 全景管理中心 (v1.7.0)
+# OpenCodeMgr 全景管理中心 (v1.8.0)
 
 > 专为 **OpenCode (`opencode-ai`)** 打造的跨平台桌面 GUI 与 MCP 全方位管理套件 — 完整支持 **专业技能库管理（`skills/*/SKILL.md`）**、**多主机环境网络对拷与快照备份**、**模型与供应商可视化配置（OpenCode Zen / Go / Models.dev / 自定义端点）**、**插件按角色分配 (`plugin/*.js`)**、**自定义代理角色 (`agent/*.md`)**、**23 组 MCP 扩展工具** 与 **SQLite 对话数据库深度瘦身**。
 

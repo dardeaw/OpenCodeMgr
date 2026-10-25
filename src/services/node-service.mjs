@@ -10,7 +10,8 @@ import {
   getNodePaths,
   runNodeCmd,
   readNodeFile,
-  runDbHelperOnNode
+  runDbHelperOnNode,
+  detectNodeOpenCodeVersion
 } from '../core/node-transport.mjs';
 import {
   parseAgentMarkdown,
@@ -66,12 +67,15 @@ export function removeNode(nodeId) {
 
 export async function getNodeConfigSnapshot(nodeId = 'local') {
   const node = getNode(nodeId);
-  const { sep, promptLocal, promptGlobal, promptSsh, agentDir, pluginDir, trimTools } = getNodePaths(node);
+  const paths = getNodePaths(node);
+  const { sep, promptLocal, promptGlobal, promptSsh, agentDir, pluginDir, trimTools, cliFile, tuiFile } = paths;
 
   const { raw: rawJsonc, parsed } = await readNodeJsonc(node);
   const localPrompt = await readNodeFile(node, promptLocal);
   const globalPrompt = await readNodeFile(node, promptGlobal);
   const sshPrompt = node.type === 'local' ? null : await readNodeFile(node, promptSsh);
+  const cliRaw = await readNodeFile(node, cliFile);
+  const tuiRaw = await readNodeFile(node, tuiFile);
 
   // Agents
   const agentList = [];
@@ -155,12 +159,22 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
     console.warn(`[node-service] providers-meta fetch failed on ${node.id}:`, e.message);
   }
 
+  let opencodeVersionInfo = { version: '1.19.4', isV2: false, v2Ready: true };
+  try {
+    opencodeVersionInfo = await detectNodeOpenCodeVersion(node);
+  } catch {}
+
   return {
     node: node.id,
     name: node.name,
     ip: node.ip,
+    opencodeVersion: opencodeVersionInfo.version,
+    isV2: opencodeVersionInfo.isV2,
+    v2Ready: true,
     config: parsed,
     rawJsonc,
+    cliConfig: cliRaw ? { raw: cliRaw } : null,
+    tuiConfig: tuiRaw ? { raw: tuiRaw } : null,
     providersMeta,
     systemPrompts: {
       local: { name: 'AGENTS.local.md', content: localPrompt },
