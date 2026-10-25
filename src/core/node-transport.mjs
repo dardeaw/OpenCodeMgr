@@ -213,12 +213,12 @@ export async function detectNodeOpenCodeVersion(node) {
         const { stdout } = await execAsync('opencode --version', { timeout: 3000 });
         if (stdout && stdout.trim()) ver = stdout.trim();
       } catch {}
-      const isV2 = ver.startsWith('2.') || ver.startsWith('v2.');
+      const isV2 = ver.includes('2.') || ver.includes('v2.');
       return { version: ver, isV2, v2Ready: true };
     } else {
       const out = await runNodeCmd(node, 'opencode --version 2>/dev/null || ~/.opencode/bin/opencode --version 2>/dev/null || echo "1.19.4"');
       const ver = (out || '').trim().split(/\r?\n/).pop().trim() || '1.19.4';
-      const isV2 = ver.startsWith('2.') || ver.startsWith('v2.');
+      const isV2 = ver.includes('2.') || ver.includes('v2.');
       return { version: ver, isV2, v2Ready: true };
     }
   } catch (err) {
