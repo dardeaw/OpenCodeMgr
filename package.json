@@ -11,8 +11,33 @@
     "mcp": "node mcp-server.mjs"
   },
   "bin": {
+    "opencode-mgr": "./app.mjs",
     "opencodemgr": "./app.mjs",
     "opencodemgr-mcp": "./mcp-server.mjs"
+  },
+  "files": [
+    "app.mjs",
+    "server.mjs",
+    "mcp-server.mjs",
+    "i18n.mjs",
+    "db_helper.py",
+    "nodes.example.json",
+    "public",
+    "src",
+    "README.md",
+    "README.zh-TW.md",
+    "README.zh-CN.md",
+    "README.ja-JP.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dardeaw/OpenCodeMgr.git"
+  },
+  "homepage": "https://github.com/dardeaw/OpenCodeMgr#readme",
+  "bugs": {
+    "url": "https://github.com/dardeaw/OpenCodeMgr/issues"
   },
   "keywords": [
     "opencode",

@@ -1,61 +1,171 @@
 # OpenCodeMgr (v1.7.0)
 
-Cross-Platform GUI & MCP Management Suite for **OpenCode** — managing Environment Cloning & Snapshot Backups, Specialized Skills (`skills/*/SKILL.md`), Models & Providers (`OpenCode Zen` / `OpenCode Go` / `Models.dev` / Custom), Per-Agent Plugins (`plugin/*.js`), Custom Agent Roles (`agent/*.md`), System Prompts, MCP Servers, Multi-Host SSH Nodes, and Deep SQLite Session Maintenance.
+> Complete Cross-Platform GUI & MCP Management Suite for **OpenCode (`opencode-ai`)** — Native **Specialized Skills Management (`skills/*/SKILL.md`)**, **Multi-Host Environment Network Replication & Snapshot Backup**, **Models & Providers Visual Configuration**, **Per-Agent Plugin Routing (`plugin/*.js`)**, **Custom Agent Roles (`agent/*.md`)**, **23 Built-in MCP Tools**, and **Deep SQLite Session Maintenance**.
 
 [English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md) | [Changelog](CHANGELOG.md)
 
 ---
 
-## Overview
+## Why OpenCodeMgr?
 
-**OpenCodeMgr** is a zero-dependency, full-featured desktop and web management control center built for **OpenCode** (`opencode-ai`). It provides both an interactive dark-themed GUI dashboard (`http://127.0.0.1:5210`) and a compliant **Model Context Protocol (MCP) Server** (`mcp-server.mjs` / `POST /mcp`) so both developers and AI agents can inspect, configure, clone, and optimize local and remote OpenCode instances.
+**OpenCode** is one of the most powerful agentic coding assistants available in the terminal. However, as power users scale their daily usage across multiple workstations, GPU inference servers, and custom agent configurations, several critical maintenance bottlenecks arise:
+
+1. **Skills Are Hard to Manage**: OpenCode natively supports `skills/*/SKILL.md` (following the `agentskills.io` standard), but managing them requires manual terminal navigation, markdown editing, and repetitive cross-server copying without a visual overview or validation.
+2. **Multi-Host Environment Sync is Error-Prone**: Replicating provider endpoints, authentication keys, custom agents, skills, and plugins between dev machines (Windows backslashes) and remote Linux GPU boxes (forward slashes) frequently breaks paths and local network BaseURLs.
+3. **SQLite Database (`opencode.db`) Bloat**: Extensive multi-turn agent debugging, large tool dumps, reasoning chains (`<think>`), and file snapshots bloat the SQLite database into gigabytes, causing startup latency.
+4. **Manual `opencode.jsonc` Edits Risk Syntax Errors**: A single trailing comma or bracket mismatch can break OpenCode's entire configuration.
+
+**OpenCodeMgr** delivers a zero-dependency, local-first interactive dark-themed GUI (`http://127.0.0.1:5210`) alongside a standard **Model Context Protocol (MCP) Server** (`mcp-server.mjs`), resolving these friction points in one unified cockpit.
 
 ---
 
-## Key Features
+## Key Features & Capabilities
 
-### 1. ⚡ Specialized Skills Management (`skills/*/SKILL.md`)
-- **Native OpenCode Skills (agentskills.io Standard)**: Full lifecycle management for OpenCode skills stored in `<configDir>/skills/<id>/SKILL.md` with YAML frontmatter (`name`, `description`) and detailed Markdown procedural instructions.
-- **Interactive Sticky Card Selector & Dedicated Editor**: Instant real-time search filtering across skill IDs, display names, and trigger descriptions. Includes a full-height vertical Markdown editor with syntax highlighting, independent scroll area, and single-click save/delete.
-- **Built-in Production Demonstration Skills**: Includes 3 battle-tested exemplary skills:
-  - `git-release`: Automated SemVer version bump, changelog generation, git commit/tag, and push workflows.
-  - `code-refactor`: Single Responsibility Principle (SRP), clean architectural layering, and syntax verification.
-  - `sqlite-optimizer`: SQLite WAL checkpoint truncate (`PRAGMA wal_checkpoint(TRUNCATE)`), session pruning, and database `VACUUM`.
-- **Dedicated Skill MCP Automation**: 4 dedicated MCP tools (`opencodemgr_list_skills`, `opencodemgr_get_skill`, `opencodemgr_save_skill`, `opencodemgr_delete_skill`) for direct AI agent workflow automation.
+### 1. ⚡ Specialized Skills Management (`skills/*/SKILL.md`, agentskills.io Standard)
 
-### 2. 🧬 Environment Clone, Network Replication & Snapshot Backup
-- **Node-to-Node Live Network Clone**: Direct replication from any source node to one or multiple remote OpenCode nodes across the local network with sequential multi-node execution and live progress reporting.
-- **Portable Snapshot Export & Import**: Export configuration snapshots as `.opencode-env.json` bundles with one-click browser download, or restore bundles from file uploads with JSON validation and preview.
-- **Smart Cross-Platform Path Translation**: Automatically translates paths between Windows (`C:\Users\馮\.config\opencode\...`) and Linux (`/home/dardeaw/.config/opencode/...`), normalizing path separators (`\` vs `/`) and user directories.
-- **Target BaseURL Preservation**: Preserves target-specific endpoints (e.g. local SSH tunnel `127.0.0.1:18200` vs tailnet `100.103.82.28:18200`) so network cloning never breaks model inference.
-- **Pre-Execution Safe Auto-Backup**: Creates `.bak-YYYYMMDD_HHMMSS` backups on the target host before applying any file changes.
-- **12-Component Granular Selection (with Skills & SQLite opencode.db)**: Pick and choose exactly what to clone or export: Providers & Options, Models Visibility, Provider Credentials (`auth.json`), Custom Agents (`agent/*.md`), **Specialized Skills (`skills/*/SKILL.md`)**, Plugins (`plugin/*.js`), Plugin Scopes, System Prompts, MCP Servers, Tools, Bash Permissions, and **SQLite Session Database (`opencode.db`)** with streaming compression and automatic target backups.
+OpenCode implements the open [agentskills.io](https://agentskills.io) standard for specialized procedural workflows. OpenCodeMgr provides a dedicated visual management hub:
 
-### 3. 🧠 Models & Providers Management (`/models` & `/connect` Parity)
-- **Global Model Assignment**: Configure `model` (Primary), `small_model` (Lightweight helper), `agent.title.model` (Auto-title), and `agent.compaction.model` (Context compaction) with instant **Keyword Fuzzy-Search Combobox Dropdowns**.
-- **Built-in & Custom Providers**: First-class support for **OpenCode Zen** (`opencode`), **OpenCode Go** (`opencode-go`), custom local/remote inference servers (`@ai-sdk/openai-compatible` for `llama.cpp`, `vLLM`, `gufo`, `strata`, `lemonade`), and official cloud SDKs.
-- **Unified Credential Management**: Manage both `~/.local/share/opencode/auth.json` (`/connect` keys) and `opencode.jsonc` provider options (`baseURL`, `apiKey`, `whitelist`, `blacklist`).
-- **Official Models.dev Catalog Browser**: Browse and one-click import model specifications (context/output limits, modalities, reasoning effort, temperature) directly from `~/.cache/opencode/models.json`.
+```text
+~/.config/opencode/skills/
+├── git-release/
+│   └── SKILL.md            # YAML Frontmatter (name, description) + Procedural Workflow
+├── code-refactor/
+│   └── SKILL.md
+└── sqlite-optimizer/
+    └── SKILL.md
+```
 
-### 4. 🧩 Plugin Management & Per-Agent Role Assignment
-- **Lifecycle & Load Order Control**: Discover all `plugin/*.js` scripts on any node, mount/unmount them in `opencode.jsonc` `"plugin"`, adjust execution order (`↑` / `↓`), and edit JavaScript ESM hook code live.
-- **Per-Agent Role Scoping (`by Agent Role`)**: Assign each plugin to run on **All Agents (`all`)**, **Only Selected Agents (`include`)**, or **Bypass Selected Agents (`exclude`)**.
-- **Two-Way Sync & Runtime Hook Wrapper**: Configure plugin scopes from either the **🧩 Plugins** tab or the **🤖 Agents** editor; automatically generates `plugin-scopes.json` and the non-invasive `plugin/_mgr_scope.js` runtime wrapper.
+- **How OpenCode Skills Work**:
+  When OpenCode boots, it automatically discovers and parses all `skills/*/SKILL.md` directories. It reads the top YAML frontmatter (`name` and `description`) into the model's global awareness. When a user prompt matches a skill's activation trigger, the agent automatically ingests the entire `SKILL.md` body and executes the exact procedure step-by-step.
+- **SKILL.md Specification Example**:
+  ```markdown
+  ---
+  name: git-release
+  description: Automated SemVer version bump, changelog generation, git commit/tag, and push workflows
+  ---
 
-### 5. 🤖 Custom Agents & Dedicated Tool Permissions
-- Manage `agent/*.md` profiles (`mode: all | subagent | primary`, `model` override, routing `description`, and Markdown system prompt).
-- Visual per-agent tool permission matrix (`edit`, `bash`, `read`, `grep`/`glob`, `task`, `websearch`/`webfetch`) with one-click **Read-Only Audit** and **Full Dev** presets.
+  # Git Release Workflow
+  When the user requests a version release, strictly execute the following SOP:
+  1. Verify working tree cleanliness with git status and run syntax checks.
+  2. Determine version increment (Patch / Minor / Major) according to SemVer.
+  3. Prepend new release section to CHANGELOG.md.
+  4. Stage changes, commit with standard message, and create signed/annotated git tag.
+  5. Push commits and tags to origin repository.
+  ```
+- **Visual Dual-Pane GUI Workflow**:
+  - **Sticky Top Card Selector**: Instant real-time fuzzy search across skill IDs, display names, and trigger descriptions.
+  - **Full-Height Vertical Markdown Editor**: Dedicated monospace code editor with an independent scrollbar and auto-expanding layout.
+  - **Pre-Execution Safety**: Automatic `.bak` backup creation before any skill modification or folder deletion.
+- **3 Bundled Production Demonstration Skills**:
+  1. `git-release`: Automated SemVer progression, changelog generation, git commit/tag, and push workflow.
+  2. `code-refactor`: Single Responsibility Principle (SRP), clean architectural layering, syntax check, and zero-temp file discipline.
+  3. `sqlite-optimizer`: SQLite WAL checkpoint truncate, conversation history pruning, and database `VACUUM`.
+- **4 Dedicated Skill MCP Automation Tools**:
+  AI agents can self-manage and query skills via `opencodemgr_list_skills`, `opencodemgr_get_skill`, `opencodemgr_save_skill`, and `opencodemgr_delete_skill`.
+
+---
+
+### 2. 🧬 Multi-Host Environment Clone & Snapshot Backup
+
+- **Live Node-to-Node Network Replication**:
+  Directly push your active OpenCode setup from your local machine to one or multiple remote Linux/macOS host nodes across your LAN with sequential execution and granular per-node progress reporting.
+- **Portable Snapshot Bundles (Export & Import)**:
+  Pack your entire configuration into a portable `.opencode-env.json` bundle with one-click browser download (`GET /api/env-export?download=1`). Restore it onto any host with full JSON schema validation and component previews.
+- **Smart Cross-Platform Path Translation**:
+  Intelligently converts paths between Windows (`C:\Users\馮\.config\opencode\...`) and Linux (`/home/dardeaw/.config/opencode/...`), normalizing path separators (`\` vs `/`) and user directories without dead links.
+- **Target BaseURL Preservation**:
+  Optionally preserves destination-specific provider endpoints (e.g. local SSH tunnel `127.0.0.1:18200` vs tailnet IP `100.103.82.28:18200`), ensuring model connectivity never breaks after cloning.
+- **12-Component Granular Selection Matrix**:
+  Independently toggle what to clone or export:
+  1. Providers & Model Specs (`opencode.jsonc` provider configuration)
+  2. Model Visibility Toggles (`opencode.global.dat`)
+  3. Provider Credentials (`auth.json`)
+  4. Custom Agent Roles (`agent/*.md`)
+  5. **Specialized Skills (`skills/*/SKILL.md`)**
+  6. Plugins (`plugin/*.js`)
+  7. Per-Agent Plugin Scopes (`plugin-scopes.json`)
+  8. System Prompts & Global Instructions (`AGENTS.md`)
+  9. MCP Server Registrations (`opencode.jsonc` mcp)
+  10. System Prompt Trimming Rules (`plugin/trim-tools.js`)
+  11. Bash Execution Permissions (`permission.bash`)
+  12. **SQLite Session Database (`opencode.db`)** (with WAL checkpoint flush and streaming gzip compression)
+
+---
+
+### 3. 🧠 Models & Providers Management (Parity with `/models` & `/connect`)
+
+- **Global Active Model Assignment**:
+  Configure Primary Model (`model`), Lightweight Model (`small_model`), Title Model (`agent.title.model`), and Compaction Model (`agent.compaction.model`) using **Keyword Fuzzy-Search Combobox Dropdowns**.
+- **Live OpenCode Zen Sync**:
+  Live intersection with `https://opencode.ai/zen/v1/models` filters out deprecated entries, displaying only currently active recommended models.
+- **Official Models.dev Catalog Browser**:
+  Browse and one-click import 40+ providers and hundreds of models directly from `~/.cache/opencode/models.json` with context limits, modality flags, and reasoning effort parameters.
+- **Custom Local Inference Servers**:
+  First-class support for `@ai-sdk/openai-compatible` endpoints (`llama.cpp`, `vLLM`, `gufo`, `strata`, `lemonade`) and major official cloud providers.
+
+---
+
+### 4. 🧩 Plugin Management & Per-Agent Role Scoping
+
+- **Lifecycle & Execution Ordering**:
+  Discover all `plugin/*.js` scripts on any node, mount/unmount in `opencode.jsonc`, adjust load order (`↑` / `↓`), and edit JavaScript ESM hook code live.
+- **Role-Based Scope Delegation**:
+  - `all`: Universal plugin execution across all agents.
+  - `include`: Runs exclusively for selected agent roles (bypassed for unchecked roles).
+  - `exclude`: Excludes selected agent roles (runs for everyone else).
+- **Non-Invasive Runtime Wrapper**:
+  OpenCodeMgr automatically maintains `plugin-scopes.json` and the transparent `plugin/_mgr_scope.js` runtime interceptor without modifying your original plugin code.
+
+---
+
+### 5. 🤖 Custom Agent Roles & Dedicated Tool Permissions
+
+- Visually edit `agent/*.md` profiles (`mode: all | subagent | primary`, model overrides, description triggers, and system prompts).
+- **6-Tool Permission Matrix**: Interactively assign per-role permissions for `edit`, `bash`, `read`, `grep`/`glob`, `task`, and `websearch`/`webfetch` with one-click **Read-Only Audit** and **Full Dev** presets.
+
+---
 
 ### 6. 💬 Session Tree Aggregation & Deep SQLite Pruning
-- **Subagent Tree View**: Automatically groups child subagent executions under their parent root conversations with cumulative size and token statistics.
-- **Selective Session Pruning**: Reclaim 40%–60% of `opencode.db` disk space by pruning failed tool calls, `<think>` reasoning chains, oversized tool outputs (`>1500` chars), temporary file snapshots, and empty step markers, followed by one-click SQLite `VACUUM`.
 
-### 7. 🌐 Multi-Host Fleet Management & 4-Language i18n
-- Seamlessly switch between **Localhost**, **Direct SSH Nodes**, and **Jump-Host SSH Nodes** with automatic path detection (`~/.config/opencode` and `~/.local/share/opencode/opencode.db`).
-- **100% Localized UI (340+ keys × 4 languages)**: Instant live switching between **English (`en-US`)**, **Traditional Chinese (`zh-TW`)**, **Simplified Chinese (`zh-CN`)**, and **Japanese (`ja-JP`)**.
+- **Subagent Hierarchical Tree View**: Automatically groups child subagent tasks beneath their root conversation with token and storage statistics.
+- **Deep Pruning Engine**:
+  - Prunes failed tool execution dumps
+  - Strips oversized tool outputs (customizable threshold, e.g. >1500 chars)
+  - Clears reasoning chain tokens (`<think>` blocks)
+  - Removes intermediate file edit snapshots
+  - Executes SQLite `VACUUM` to reclaim **40% to 60%** of disk space on `opencode.db`.
 
-### 8. 🔌 Built-in MCP Server (Stdio & Streamable HTTP)
-- Exposes **23 MCP Tools (`opencodemgr_*`)** and dynamic resources (`opencodemgr://nodes`, `opencodemgr://config/{node}`) over both `stdio` and `POST http://127.0.0.1:5210/mcp`.
+---
+
+### 7. 🔌 23 Built-in MCP Tools Reference
+
+OpenCodeMgr includes a standard Model Context Protocol (MCP) server supporting Stdio and Streamable HTTP (`POST http://127.0.0.1:5210/mcp`):
+
+| Category | Tool Name | Description |
+|---|---|---|
+| **Host Fleet** | `opencodemgr_list_nodes` | Enumerate all configured nodes (local, SSH, jump host) |
+| | `opencodemgr_test_node` | Test connectivity and latency to a target node |
+| | `opencodemgr_get_config` | Fetch a complete configuration snapshot of a node |
+| **Sessions & DB** | `opencodemgr_session_stats` | Inspect SQLite DB size, WAL cache, and message counts |
+| | `opencodemgr_list_sessions` | List conversations grouped by workspace |
+| | `opencodemgr_get_session_detail`| Retrieve full conversation message history and parts |
+| | `opencodemgr_clean_session` | Prune oversized outputs and thinking tokens from a session |
+| | `opencodemgr_delete_session` | Delete a specific conversation and all subagent branches |
+| **Models & Providers**| `opencodemgr_list_providers` | List all configured providers and sub-models |
+| | `opencodemgr_set_global_models`| Set primary, small, title, and compaction models |
+| | `opencodemgr_save_provider` | Create or update a provider and its credentials |
+| **Agents** | `opencodemgr_list_agents` | Enumerate custom agents and tool permission matrices |
+| | `opencodemgr_save_agent` | Create or update custom agent markdown profiles |
+| **Specialized Skills**| `opencodemgr_list_skills` | **Enumerate all `skills/*/SKILL.md` procedures on a node** |
+| | `opencodemgr_get_skill` | **Read frontmatter metadata and full Markdown instructions** |
+| | `opencodemgr_save_skill` | **Create or update skills with automated backup and folder init** |
+| | `opencodemgr_delete_skill` | **Safely delete skill folders with automatic .bak preservation** |
+| **Plugins & Scopes** | `opencodemgr_list_plugins` | List installed plugins, load order, and per-agent scopes |
+| | `opencodemgr_configure_plugin`| Enable/disable plugins, adjust agent scopes, or edit code |
+| **MCP Management** | `opencodemgr_manage_mcp` | Add, update, or remove MCP server registrations |
+| **Environment Sync** | `opencodemgr_export_env` | Export portable OpenCode snapshot bundles (.json) |
+| | `opencodemgr_import_env` | Restore environment bundle with path translation & backup |
+| | `opencodemgr_clone_env` | Live node-to-node network replication across multiple targets |
 
 ---
 
@@ -63,7 +173,7 @@ Cross-Platform GUI & MCP Management Suite for **OpenCode** — managing Environm
 
 ```text
 OpenCodeMgr/
-├── app.mjs                      # Desktop App Window & Server Launcher (--server-only supported)
+├── app.mjs                      # Desktop App Launcher & Server (--server-only supported)
 ├── server.mjs                   # Lightweight HTTP Server Entry Point (Port 5210)
 ├── mcp-server.mjs               # Standalone Stdio MCP Server Entry Point (JSON-RPC 2.0)
 ├── i18n.mjs                     # 4-Language Localization Dictionary (340+ keys: zh-TW, zh-CN, en-US, ja-JP)
@@ -72,7 +182,7 @@ OpenCodeMgr/
 ├── src/
 │   ├── core/
 │   │   ├── node-transport.mjs   # Local FS, Paramiko SSH, Jump SSH & Safe File Backup Layer
-│   │   └── parsers.mjs          # JSONC Parser, Agent & Skill Frontmatter, trim-tools & Scope Wrapper
+│   │   └── parsers.mjs          # JSONC Parser, Agent/Skill Frontmatter & Plugin Scope Wrapper
 │   ├── services/
 │   │   ├── clone-service.mjs    # Environment Export, Import, Cross-Platform Translation & Clone
 │   │   ├── skill-service.mjs    # OpenCode Skills CRUD, Validation & Directory Management
@@ -116,18 +226,20 @@ git clone https://github.com/dardeaw/OpenCodeMgr.git
 cd OpenCodeMgr
 cp nodes.example.json nodes.json
 ```
+Edit `nodes.json` with your local and remote SSH host IP addresses.
 
 ### 2. Launch GUI Application
 ```bash
 # Launch Server + Native Maximized App Window
 npm start
 
-# Launch Background HTTP Server Only (http://127.0.0.1:5210)
+# Launch Headless Background Server Only (http://127.0.0.1:5210)
 npm run server
 ```
-On Windows, you can also double-click **`OpenCode Manager.exe`** directly.
+On Windows, you can double-click **`OpenCode Manager.exe`** directly.
 
 ### 3. Mount as an MCP Server in `opencode.jsonc`
+Add the following to your `~/.config/opencode/opencode.jsonc`:
 ```json
 {
   "mcp": {
@@ -145,4 +257,4 @@ On Windows, you can also double-click **`OpenCode Manager.exe`** directly.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](LICENSE) for details. Community feedback, issues, and PRs are warmly welcomed!

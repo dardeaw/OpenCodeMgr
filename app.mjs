@@ -47,7 +47,14 @@ function openAppWindow() {
   }
 
   console.log('[OpenCode Manager] Launching default browser...');
-  exec(`explorer "${APP_URL}"`);
+  const platform = process.platform;
+  if (platform === 'darwin') {
+    exec(`open "${APP_URL}"`);
+  } else if (platform === 'win32') {
+    exec(`explorer "${APP_URL}"`);
+  } else {
+    exec(`xdg-open "${APP_URL}"`);
+  }
 }
 
 async function main() {

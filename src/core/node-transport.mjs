@@ -13,7 +13,10 @@ const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const MANAGER_ROOT_DIR = path.resolve(__dirname, '..', '..');
 export const BASE_OPENCODE_DIR = path.resolve(MANAGER_ROOT_DIR, '..');
-export const NODES_CONFIG_FILE = path.join(MANAGER_ROOT_DIR, 'nodes.json');
+const USER_CONFIG_NODES = path.join(os.homedir(), '.config', 'opencode', 'nodes.json');
+export const NODES_CONFIG_FILE = fs.existsSync(path.join(MANAGER_ROOT_DIR, 'nodes.json'))
+  ? path.join(MANAGER_ROOT_DIR, 'nodes.json')
+  : USER_CONFIG_NODES;
 export const RUN_SSH_SCRIPT = path.join(BASE_OPENCODE_DIR, 'run_ssh.py');
 export const JUMP_SSH_SCRIPT = path.join(BASE_OPENCODE_DIR, 'jump_ssh.py');
 export const LOCAL_DB_HELPER = path.join(MANAGER_ROOT_DIR, 'db_helper.py');
