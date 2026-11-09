@@ -4,6 +4,14 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.8.1] - 2026-11-09
+
+### 🔧 Path Portability Fixes (per-user / new-host ready)
+- **Home Expansion in `nodes.json`**: `getNodePaths()` and `loadNodes()` now expand leading `~`, `~/`, `~\` and `$HOME/` to the current user's home directory for both `configDir` and `dbPath`. The portable `~/.config/opencode` notation from `nodes.example.json` works out of the box on any OS/user without hardcoding absolute paths.
+- **Dual Agent/Plugin Directory Layouts**: Node configuration snapshots now scan both singular (`agent/`, `plugin/`) and plural (`agents/`, `plugins/`) directories, so custom agent roles and plugins appear regardless of the local layout convention. Applies to both local and remote SSH nodes.
+
+---
+
 ## [v1.8.0] - 2026-10-25
 
 ### 🚀 OpenCode 2.0 Full Compatibility & 1.x Backward Compatibility (雙軌兼備)
