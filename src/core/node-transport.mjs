@@ -92,7 +92,9 @@ export function getNodePaths(node) {
     promptGlobal: `${configDir}${sep}AGENTS.md`,
     promptSsh: `${configDir}${sep}SSH_WORKFLOW.md`,
     agentDir: `${configDir}${sep}agent`,
+    agentDirAlt: `${configDir}${sep}agents`,
     pluginDir: `${configDir}${sep}plugin`,
+    pluginDirAlt: `${configDir}${sep}plugins`,
     skillDir: `${configDir}${sep}skills`,
     pluginScopesFile: `${configDir}${sep}plugin-scopes.json`,
     trimTools: `${configDir}${sep}plugin${sep}trim-tools.js`

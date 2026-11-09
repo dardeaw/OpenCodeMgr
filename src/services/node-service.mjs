@@ -77,18 +77,21 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
   const cliRaw = await readNodeFile(node, cliFile);
   const tuiRaw = await readNodeFile(node, tuiFile);
 
-  // Agents
+  // Agents (support both agent/ and agents/ layouts)
   const agentList = [];
+  const agentDirs = [agentDir, paths.agentDirAlt].filter(Boolean);
   if (node.type === 'local') {
-    if (fs.existsSync(agentDir)) {
-      const files = fs.readdirSync(agentDir).filter(f => f.endsWith('.md'));
+    for (const dir of agentDirs) {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
       for (const f of files) {
-        const content = fs.readFileSync(path.join(agentDir, f), 'utf-8');
+        const content = fs.readFileSync(path.join(dir, f), 'utf-8');
         agentList.push(parseAgentMarkdown(content, f));
       }
     }
   } else {
-    const lsOut = await runNodeCmd(node, `ls -1 "${agentDir}"/*.md 2>/dev/null || true`);
+    const lsCmds = agentDirs.map(d => `ls -1 "${d}"/*.md 2>/dev/null || true`).join('; ');
+    const lsOut = await runNodeCmd(node, lsCmds);
     const files = lsOut.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     for (const fullPath of files) {
       const f = fullPath.split('/').pop();
@@ -110,19 +113,25 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
 
   const pluginList = [];
   const rawPluginFiles = [];
+  const seenPlugin = new Set();
+  const pluginDirs = [pluginDir, paths.pluginDirAlt].filter(Boolean);
   if (node.type === 'local') {
-    if (fs.existsSync(pluginDir)) {
-      for (const f of fs.readdirSync(pluginDir)) {
-        if ((f.endsWith('.js') || f.endsWith('.mjs')) && f !== '_mgr_scope.js' && !f.includes('.bak')) {
-          rawPluginFiles.push({ name: f, fullPath: path.join(pluginDir, f) });
+    for (const dir of pluginDirs) {
+      if (!fs.existsSync(dir)) continue;
+      for (const f of fs.readdirSync(dir)) {
+        if ((f.endsWith('.js') || f.endsWith('.mjs')) && f !== '_mgr_scope.js' && !f.includes('.bak') && !seenPlugin.has(f)) {
+          seenPlugin.add(f);
+          rawPluginFiles.push({ name: f, fullPath: path.join(dir, f) });
         }
       }
     }
   } else {
-    const lsP = await runNodeCmd(node, `ls -1 "${pluginDir}"/*.js "${pluginDir}"/*.mjs 2>/dev/null || true`);
+    const lsCmds = pluginDirs.map(d => `ls -1 "${d}"/*.js "${d}"/*.mjs 2>/dev/null || true`).join('; ');
+    const lsP = await runNodeCmd(node, lsCmds);
     for (const fp of lsP.split(/\r?\n/).map(s => s.trim()).filter(Boolean)) {
       const fn = fp.split('/').pop();
-      if (fn !== '_mgr_scope.js' && !fn.includes('.bak')) {
+      if (fn !== '_mgr_scope.js' && !fn.includes('.bak') && !seenPlugin.has(fn)) {
+        seenPlugin.add(fn);
         rawPluginFiles.push({ name: fn, fullPath: fp });
       }
     }
