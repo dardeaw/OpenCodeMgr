@@ -41,13 +41,19 @@ const DEFAULT_NODES = [
   }
 ];
 
+export function expandNodePaths(node) {
+  if (node.configDir) node.configDir = expandHome(node.configDir);
+  if (node.dbPath) node.dbPath = expandHome(node.dbPath);
+  return node;
+}
+
 export function loadNodes() {
   if (!fs.existsSync(NODES_CONFIG_FILE)) {
     return DEFAULT_NODES;
   }
   try {
     const parsed = JSON.parse(fs.readFileSync(NODES_CONFIG_FILE, 'utf-8'));
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_NODES;
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed.map(expandNodePaths) : DEFAULT_NODES;
   } catch (err) {
     console.error('[node-transport] Failed to parse nodes.json:', err.message);
     return DEFAULT_NODES;
@@ -63,10 +69,18 @@ export function getNode(nodeId = 'local') {
   return nodes.find(n => n.id === nodeId) || nodes[0];
 }
 
+export function expandHome(p) {
+  const s = String(p || '');
+  if (s === '~') return os.homedir();
+  if (s.startsWith('~/') || s.startsWith('~\\')) return path.join(os.homedir(), s.slice(2));
+  if (s.startsWith('$HOME/')) return path.join(os.homedir(), s.slice(6));
+  return s;
+}
+
 export function getNodePaths(node) {
   const isWindows = node.type === 'local' || String(node.configDir || '').includes('\\');
   const sep = isWindows ? '\\' : '/';
-  const configDir = String(node.configDir || '').replace(/[\\/]+$/, '');
+  const configDir = expandHome(node.configDir).replace(/[\\/]+$/, '');
   return {
     isWindows,
     sep,
