@@ -4,6 +4,13 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.8.3] - 2026-11-10
+
+### 🗑️ Cascade Session Deletion (subagents)
+- **Subagent sessions are now deleted together with their parent**: `delete_session()` walks the `session.parent_id` tree and removes all descendant subagent sessions, messages, parts, and context epochs in a single operation. Previously deleting a parent left orphaned child subagent sessions behind. The confirmation dialog now states that subagent tasks will also be removed.
+
+---
+
 ## [v1.8.2] - 2026-11-10
 
 ### 🤖 Inline Agent Roles from `opencode.jsonc`

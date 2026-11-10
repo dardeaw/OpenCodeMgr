@@ -157,7 +157,7 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
 
   const bundle = {
     format: 'opencode-env-bundle',
-    version: '1.8.2',
+    version: '1.8.3',
     exportedAt: new Date().toISOString(),
     source: {
       id: node.id,
