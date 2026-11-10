@@ -4,6 +4,13 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.8.2] - 2026-11-10
+
+### 🤖 Inline Agent Roles from `opencode.jsonc`
+- **JSONC-defined agents now appear in the Roles view**: Custom agents declared inline inside `opencode.jsonc` (`"agent": { "<id>": {...} }`) are enumerated alongside `agent/*.md` files, so roles such as `build`, `plan`, `publish`, `programmer`, and `gm` show up even when they are not separate markdown files. `{file:...}` prompt references are resolved automatically, and entries are deduplicated against markdown-defined agents.
+
+---
+
 ## [v1.8.1] - 2026-11-09
 
 ### 🔧 Path Portability Fixes (per-user / new-host ready)

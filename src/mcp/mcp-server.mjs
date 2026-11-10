@@ -6,7 +6,7 @@ import * as managerService from '../services/manager-service.mjs';
 
 export const MCP_SERVER_INFO = {
   name: 'opencodemgr-mcp',
-  version: '1.8.1'
+  version: '1.8.2'
 };
 
 export const MCP_TOOLS = [
