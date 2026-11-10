@@ -214,21 +214,47 @@ def get_session_detail(session_id):
         "messages": messages
     }
 
+def collect_session_tree(session_id):
+    """Return [session_id, ...] including all descendants via parent_id."""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT id, parent_id FROM session")
+    children_map = {}
+    for sid, pid in cur.fetchall():
+        children_map.setdefault(pid or "", []).append(sid)
+    conn.close()
+
+    tree = []
+    stack = [session_id]
+    seen = set()
+    while stack:
+        sid = stack.pop()
+        if sid in seen:
+            continue
+        seen.add(sid)
+        tree.append(sid)
+        stack.extend(children_map.get(sid, []))
+    return tree
+
+
 def delete_session(session_id):
+    ids = collect_session_tree(session_id)
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
-    cur.execute("DELETE FROM part WHERE session_id=?", (session_id,))
-    cur.execute("DELETE FROM message WHERE session_id=?", (session_id,))
-    cur.execute("DELETE FROM session WHERE id=?", (session_id,))
+    placeholders = ",".join("?" * len(ids))
+    cur.execute(f"DELETE FROM part WHERE session_id IN ({placeholders})", ids)
+    cur.execute(f"DELETE FROM message WHERE session_id IN ({placeholders})", ids)
+    cur.execute(f"DELETE FROM session WHERE id IN ({placeholders})", ids)
     try:
-        cur.execute("DELETE FROM session_context_epoch WHERE session_id=?", (session_id,))
+        cur.execute(f"DELETE FROM session_context_epoch WHERE session_id IN ({placeholders})", ids)
     except:
         pass
     conn.commit()
     conn.close()
-    return {"ok": True, "deleted": session_id}
+    return {"ok": True, "deleted": session_id, "cascade_count": len(ids), "cascade_ids": ids}
 
 def clean_session(session_id, options):
     """
