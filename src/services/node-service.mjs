@@ -77,8 +77,9 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
   const cliRaw = await readNodeFile(node, cliFile);
   const tuiRaw = await readNodeFile(node, tuiFile);
 
-  // Agents (support both agent/ and agents/ layouts)
+  // Agents (support both agent/ and agents/ layouts, plus inline opencode.jsonc "agent" definitions)
   const agentList = [];
+  const seenAgentIds = new Set();
   const agentDirs = [agentDir, paths.agentDirAlt].filter(Boolean);
   if (node.type === 'local') {
     for (const dir of agentDirs) {
@@ -86,7 +87,9 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
       const files = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
       for (const f of files) {
         const content = fs.readFileSync(path.join(dir, f), 'utf-8');
-        agentList.push(parseAgentMarkdown(content, f));
+        const agent = parseAgentMarkdown(content, f);
+        seenAgentIds.add(agent.id);
+        agentList.push(agent);
       }
     }
   } else {
@@ -96,8 +99,42 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
     for (const fullPath of files) {
       const f = fullPath.split('/').pop();
       const content = await readNodeFile(node, fullPath);
-      agentList.push(parseAgentMarkdown(content, f));
+      const agent = parseAgentMarkdown(content, f);
+      seenAgentIds.add(agent.id);
+      agentList.push(agent);
     }
+  }
+
+  // Inline agent roles defined in opencode.jsonc ("agent": { "<id>": {...} })
+  const jsoncAgents = parsed && typeof parsed.agent === 'object' && parsed.agent !== null ? parsed.agent : {};
+  for (const [aid, spec] of Object.entries(jsoncAgents)) {
+    if (seenAgentIds.has(aid)) continue;
+    const specObj = spec && typeof spec === 'object' ? spec : {};
+    let description = String(specObj.description || '');
+    let prompt = '';
+    const rawPrompt = String(specObj.prompt || '');
+    const fileRef = rawPrompt.match(/^\{file:([^}]+)\}$/);
+    if (fileRef) {
+      try {
+        const refPath = path.isAbsolute(fileRef[1]) ? fileRef[1] : path.join(configDir, fileRef[1]);
+        prompt = fs.existsSync(refPath) ? fs.readFileSync(refPath, 'utf-8') : rawPrompt;
+      } catch {
+        prompt = rawPrompt;
+      }
+    } else {
+      prompt = rawPrompt;
+    }
+    agentList.push({
+      id: aid,
+      filename: `${aid} (opencode.jsonc)`,
+      inline: true,
+      mode: String(specObj.mode || 'all'),
+      model: String(specObj.model || ''),
+      description,
+      prompt,
+      permissions: specObj.permission && typeof specObj.permission === 'object' ? specObj.permission : {},
+      limit: specObj.limit || null
+    });
   }
 
   // Trim-tools descriptions
