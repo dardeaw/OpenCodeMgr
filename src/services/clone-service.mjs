@@ -15,13 +15,16 @@ import {
   runDbHelperOnNode,
   runNodeCmd,
   uploadToNode,
-  downloadFromNode
+  downloadFromNode,
+  detectNodeOpenCodeVersion
 } from '../core/node-transport.mjs';
 import {
   readNodeJsonc,
   updateNodeJsonc,
   readPluginScopes,
-  writePluginScopes
+  writePluginScopes,
+  ensureNativeAgent,
+  setCoreAgentField
 } from './shared-config.mjs';
 import { getNodeConfigSnapshot } from './node-service.mjs';
 import { listSkills, saveSkill } from './skill-service.mjs';
@@ -157,7 +160,7 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
 
   const bundle = {
     format: 'opencode-env-bundle',
-    version: '1.8.3',
+    version: '1.8.4',
     exportedAt: new Date().toISOString(),
     source: {
       id: node.id,
@@ -174,10 +177,13 @@ export async function exportEnvironmentBundle(sourceNodeId = 'local', requestedM
 
   // 1. Providers & Global Model assignments
   if (modules.includes('providers')) {
+    let srcIsV2 = false;
+    try { srcIsV2 = (await detectNodeOpenCodeVersion(getNode(sourceNodeId))).isV2; } catch {}
     bundle.components.providers = {
       model: cfg.model || '',
       small_model: cfg.small_model || '',
       agent: cfg.agent || {},
+      agents: srcIsV2 ? (cfg.agents || {}) : undefined,
       provider: cfg.provider || {}
     };
   }
@@ -355,13 +361,30 @@ export async function applyEnvironmentBundle(targetNodeId, bundle, options = {})
   // 1. Providers & Global Model assignments
   if (selectedModules.includes('providers') && bundle.components.providers) {
     const incoming = tr(bundle.components.providers);
+    let targetIsV2 = false;
+    try { targetIsV2 = (await detectNodeOpenCodeVersion(targetNode)).isV2; } catch {}
     await updateNodeJsonc(targetNode, (parsed) => {
       if (incoming.model) parsed.model = incoming.model;
-      if (incoming.small_model) parsed.small_model = incoming.small_model;
-      if (incoming.agent) {
-        if (!parsed.agent) parsed.agent = {};
-        if (incoming.agent.title) parsed.agent.title = incoming.agent.title;
-        if (incoming.agent.compaction) parsed.agent.compaction = incoming.agent.compaction;
+      if (targetIsV2) {
+        // v2: no small_model; fold title/compaction into native agents map.
+        const srcAgents = (incoming.agents && Object.keys(incoming.agents).length) ? incoming.agents : null;
+        if (srcAgents) {
+          parsed.agents = srcAgents;
+        } else {
+          if (incoming.agent && incoming.agent.title) ensureNativeAgent(parsed, 'title').model = incoming.agent.title.model;
+          if (incoming.agent && incoming.agent.compaction) {
+            const c = ensureNativeAgent(parsed, 'compaction');
+            if (incoming.agent.compaction.model !== undefined) c.model = incoming.agent.compaction.model;
+            if (incoming.agent.compaction.prompt !== undefined) c.system = incoming.agent.compaction.prompt;
+          }
+        }
+      } else {
+        if (incoming.small_model) parsed.small_model = incoming.small_model;
+        if (incoming.agent) {
+          if (!parsed.agent) parsed.agent = {};
+          if (incoming.agent.title) parsed.agent.title = incoming.agent.title;
+          if (incoming.agent.compaction) parsed.agent.compaction = incoming.agent.compaction;
+        }
       }
       if (incoming.provider && typeof incoming.provider === 'object') {
         if (!parsed.provider) parsed.provider = {};

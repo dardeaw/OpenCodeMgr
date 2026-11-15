@@ -4,6 +4,17 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.8.4] - 2026-11-16
+
+### ✨ OpenCode v2 Config Compatibility (`agents` / `disabled` / `system`)
+- **Version-aware config writer**: `node-transport.mjs` gains `isOpenCodeV2()` (semver major ≥ 2) and `detectNodeOpenCodeVersion()` now reports `isV2`. On OpenCode **v2** nodes the manager writes the native plural `agents` map with renamed fields (`disable`→`disabled`, `prompt`→`system`); on pre-v2 nodes it keeps the legacy singular `agent`. A V2 node never dual-writes `agent` + `agents` (which would raise a `conflict` diagnostic).
+- **Shared-config helpers**: new `ensureAgentsContainer` / `dropLegacyAgent` / `ensureNativeAgent` (migrates a touched legacy agent to native, preserving model/description/mode/hidden/color/steps) / `setCoreAgentField` / `readCoreAgentModel` / `readCoreAgentEnabled`.
+- **Global model assignment** (`provider-service.saveGlobalModels`) and **core-agent save** (`agent-plugin-service.saveCoreAgents`) branch by version; on v2 `small_model` is folded into the title agent's model instead of written as a top-level key.
+- **Reads are native-first**: `node-service` inline-agent enumeration merges `agents` ∪ `agent` and surfaces an `enabled` flag; `mcp-server` active-model reporting and the frontend `app.js` populate read native `agents.*` first, falling back to legacy for older nodes.
+- **Environment clone** (`clone-service`) export/import is version-aware: a v2 source exports native `agents`, and a v2 target folds incoming legacy `agent`/`small_model` into native `agents`.
+
+---
+
 ## [v1.8.3] - 2026-11-10
 
 ### 🗑️ Cascade Session Deletion (subagents)

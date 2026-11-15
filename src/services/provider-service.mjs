@@ -1,8 +1,8 @@
 // src/services/provider-service.mjs
 // Models, Providers, Catalog, Live Endpoint Probing & Auth Service
 
-import { getNode, runDbHelperOnNode } from '../core/node-transport.mjs';
-import { updateNodeJsonc } from './shared-config.mjs';
+import { getNode, runDbHelperOnNode, detectNodeOpenCodeVersion } from '../core/node-transport.mjs';
+import { updateNodeJsonc, setCoreAgentField } from './shared-config.mjs';
 
 export async function getCatalogModels(nodeId = 'local', providerId = 'opencode') {
   const node = getNode(nodeId);
@@ -17,20 +17,17 @@ export async function probeProviderModels(nodeId = 'local', baseUrl = '', apiKey
 
 export async function saveGlobalModels(nodeId = 'local', data = {}) {
   const node = getNode(nodeId);
+  let isV2 = false;
+  try { isV2 = (await detectNodeOpenCodeVersion(node)).isV2; } catch {}
   await updateNodeJsonc(node, (parsed) => {
     if (data.primaryModel !== undefined) parsed.model = data.primaryModel;
-    if (data.smallModel !== undefined) parsed.small_model = data.smallModel;
-    if (!parsed.agent) parsed.agent = {};
-    if (data.titleModel !== undefined) {
-      if (!parsed.agent.title) parsed.agent.title = { disable: false };
-      parsed.agent.title.model = data.titleModel;
-    }
-    if (data.compactionModel !== undefined) {
-      if (!parsed.agent.compaction) parsed.agent.compaction = {};
-      parsed.agent.compaction.model = data.compactionModel;
-    }
+    // v2 has no top-level small_model: it folds into the title agent's model.
+    // A v2 node writing small_model would emit an "unsupported" diagnostic.
+    if (!isV2 && data.smallModel !== undefined) parsed.small_model = data.smallModel;
+    if (data.titleModel !== undefined) setCoreAgentField(parsed, isV2, 'title', 'model', data.titleModel);
+    if (data.compactionModel !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'model', data.compactionModel);
   });
-  return { ok: true };
+  return { ok: true, isV2 };
 }
 
 export async function saveProvider(nodeId = 'local', providerId, providerConfig, modelVisibility = null) {

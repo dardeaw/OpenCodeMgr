@@ -7,7 +7,8 @@ import {
   runNodeCmd,
   readNodeFile,
   writeNodeFile,
-  deleteNodeFile
+  deleteNodeFile,
+  detectNodeOpenCodeVersion
 } from '../core/node-transport.mjs';
 import {
   parseJsonc,
@@ -18,7 +19,8 @@ import {
 import {
   updateNodeJsonc,
   readPluginScopes,
-  writePluginScopes
+  writePluginScopes,
+  setCoreAgentField
 } from './shared-config.mjs';
 
 // ============================================================================
@@ -96,21 +98,17 @@ export async function deleteAgent(nodeId = 'local', agentId) {
 
 export async function saveCoreAgents(nodeId = 'local', data = {}) {
   const node = getNode(nodeId);
+  let isV2 = false;
+  try { isV2 = (await detectNodeOpenCodeVersion(node)).isV2; } catch {}
   await updateNodeJsonc(node, (parsed) => {
-    if (!parsed.agent) parsed.agent = {};
-    if (!parsed.agent.compaction) parsed.agent.compaction = {};
-    if (data.compactionModel !== undefined) {
-      parsed.agent.compaction.model = data.compactionModel;
-    }
-    if (data.compactionPrompt !== undefined) {
-      parsed.agent.compaction.prompt = data.compactionPrompt;
-    }
-    if (data.titleModel !== undefined) {
-      if (!parsed.agent.title) parsed.agent.title = { disable: false };
-      parsed.agent.title.model = data.titleModel;
-    }
+    if (data.compactionModel !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'model', data.compactionModel);
+    if (data.compactionPrompt !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'system', data.compactionPrompt);
+    if (data.titleModel !== undefined) setCoreAgentField(parsed, isV2, 'title', 'model', data.titleModel);
+    // Optional enable/disable toggles for the hidden maintenance agents.
+    if (data.titleEnabled !== undefined) setCoreAgentField(parsed, isV2, 'title', 'enabled', data.titleEnabled);
+    if (data.compactionEnabled !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'enabled', data.compactionEnabled);
   });
-  return { ok: true };
+  return { ok: true, isV2 };
 }
 
 // ============================================================================

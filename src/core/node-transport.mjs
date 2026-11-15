@@ -219,6 +219,18 @@ export async function runDbHelperOnNode(node, args) {
 }
 
 /**
+ * Parse an `opencode --version` string into a native-config flag.
+ * Native config format flipped at major version 2 (agents/providers plural,
+ * disable->disabled, prompt->system, small_model folded into agents.title).
+ * Robust to prefixes like "v", "opencode ", trailing build metadata.
+ */
+export function isOpenCodeV2(versionStr) {
+  const m = String(versionStr || '').match(/(\d+)\.(\d+)/);
+  if (!m) return false;
+  return parseInt(m[1], 10) >= 2;
+}
+
+/**
  * Detect OpenCode version running on a node and return compatibility flags
  */
 export async function detectNodeOpenCodeVersion(node) {
@@ -229,13 +241,11 @@ export async function detectNodeOpenCodeVersion(node) {
         const { stdout } = await execAsync('opencode --version', { timeout: 3000 });
         if (stdout && stdout.trim()) ver = stdout.trim();
       } catch {}
-      const isV2 = ver.includes('2.') || ver.includes('v2.');
-      return { version: ver, isV2, v2Ready: true };
+      return { version: ver, isV2: isOpenCodeV2(ver), v2Ready: true };
     } else {
       const out = await runNodeCmd(node, 'opencode --version 2>/dev/null || ~/.opencode/bin/opencode --version 2>/dev/null || echo "1.19.4"');
       const ver = (out || '').trim().split(/\r?\n/).pop().trim() || '1.19.4';
-      const isV2 = ver.includes('2.') || ver.includes('v2.');
-      return { version: ver, isV2, v2Ready: true };
+      return { version: ver, isV2: isOpenCodeV2(ver), v2Ready: true };
     }
   } catch (err) {
     return { version: '1.19.4', isV2: false, v2Ready: true };

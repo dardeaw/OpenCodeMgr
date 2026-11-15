@@ -6,7 +6,7 @@ import * as managerService from '../services/manager-service.mjs';
 
 export const MCP_SERVER_INFO = {
   name: 'opencodemgr-mcp',
-  version: '1.8.3'
+  version: '1.8.4'
 };
 
 export const MCP_TOOLS = [
@@ -357,13 +357,20 @@ export async function executeMcpTool(name, args = {}) {
 
     case 'opencodemgr_list_providers': {
       const snap = await managerService.getNodeConfigSnapshot(nodeId);
+      // v2 folds small_model into agents.title and renames agent->agents; read
+      // native first, then fall back to the legacy singular shape.
+      const cfg = snap.config || {};
+      const nativeTitle = cfg.agents && typeof cfg.agents === 'object' ? cfg.agents.title : null;
+      const nativeCompaction = cfg.agents && typeof cfg.agents === 'object' ? cfg.agents.compaction : null;
+      const legacyTitle = cfg.agent && typeof cfg.agent === 'object' ? cfg.agent.title : null;
+      const legacyCompaction = cfg.agent && typeof cfg.agent === 'object' ? cfg.agent.compaction : null;
       return {
         node: snap.node,
         activeGlobalModels: {
           primaryModel: snap.config?.model || '',
-          smallModel: snap.config?.small_model || '',
-          titleModel: snap.config?.agent?.title?.model || '',
-          compactionModel: snap.config?.agent?.compaction?.model || ''
+          smallModel: (nativeTitle && nativeTitle.model) || (legacyTitle && legacyTitle.model) || cfg.small_model || '',
+          titleModel: (nativeTitle && nativeTitle.model) || (legacyTitle && legacyTitle.model) || '',
+          compactionModel: (nativeCompaction && nativeCompaction.model) || (legacyCompaction && legacyCompaction.model) || ''
         },
         configuredProviders: snap.config?.provider || {},
         authenticatedProviders: snap.providersMeta?.auth || {},

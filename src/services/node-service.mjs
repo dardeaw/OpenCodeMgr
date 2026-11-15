@@ -105,14 +105,22 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
     }
   }
 
-  // Inline agent roles defined in opencode.jsonc ("agent": { "<id>": {...} })
-  const jsoncAgents = parsed && typeof parsed.agent === 'object' && parsed.agent !== null ? parsed.agent : {};
-  for (const [aid, spec] of Object.entries(jsoncAgents)) {
+  // Inline agent roles defined in opencode.jsonc. v2 uses the plural `agents`
+  // map with renamed fields (prompt->system, disable->disabled); pre-v2 uses
+  // the singular `agent`. Merge both so a mid-migration file shows every role.
+  const jsoncAgents = {};
+  for (const [aid, spec] of Object.entries(parsed && typeof parsed.agent === 'object' && parsed.agent !== null ? parsed.agent : {})) {
+    jsoncAgents[aid] = { legacy: true, ...(spec && typeof spec === 'object' ? spec : {}) };
+  }
+  for (const [aid, spec] of Object.entries(parsed && typeof parsed.agents === 'object' && parsed.agents !== null ? parsed.agents : {})) {
+    jsoncAgents[aid] = { legacy: false, ...(spec && typeof spec === 'object' ? spec : {}) };
+  }
+  for (const [aid, specObj] of Object.entries(jsoncAgents)) {
     if (seenAgentIds.has(aid)) continue;
-    const specObj = spec && typeof spec === 'object' ? spec : {};
     let description = String(specObj.description || '');
     let prompt = '';
-    const rawPrompt = String(specObj.prompt || '');
+    // v2 stores the system prompt under `system`; v1 under `prompt`.
+    const rawPrompt = String((specObj.legacy ? specObj.prompt : specObj.system) || '');
     const fileRef = rawPrompt.match(/^\{file:([^}]+)\}$/);
     if (fileRef) {
       try {
@@ -124,12 +132,15 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
     } else {
       prompt = rawPrompt;
     }
+    // disabled(v2) / disable(v1) -> enabled flag for the UI.
+    const disabledFlag = specObj.legacy ? specObj.disable : specObj.disabled;
     agentList.push({
       id: aid,
       filename: `${aid} (opencode.jsonc)`,
       inline: true,
       mode: String(specObj.mode || 'all'),
       model: String(specObj.model || ''),
+      enabled: disabledFlag === undefined ? true : !disabledFlag,
       description,
       prompt,
       permissions: specObj.permission && typeof specObj.permission === 'object' ? specObj.permission : {},
