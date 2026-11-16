@@ -4,6 +4,21 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.10.0] - 2026-11-16
+
+### ✨ GitHub Self-Update with Cross-Platform Auto-Restart
+- **Update bell in the header**: a 🔔 icon appears in the top-right whenever a newer GitHub release tag exists than the running version. Hovering shows a tooltip (`current → latest`); clicking opens an update modal.
+- **New `update-service.mjs`**: detects the newest remote semver tag (via `gh api`, falling back to `git ls-remote`), compares against the local `package.json` version, and reports whether auto-update is safe (clean working tree required).
+- **One-click apply**: fast-forwards the checkout to the new tag (`git fetch --tags` + `git merge --ff-only`). Refuses on dirty worktree / non-fast-forward / missing tag with localized messages.
+- **Cross-platform self-restart** (`/api/restart`): after updating, the server restarts itself so the new code loads — no manual process-killing. The strategy is chosen by detecting who supervises the process:
+  - **systemd** → `systemctl restart <unit>`
+  - **pm2** → `pm2 reload <app>`
+  - **standalone** (Windows desktop app, web server, or bare `node server.mjs`) → detached self-respawn of `server.mjs`, then exit.
+- **Seamless UX**: the frontend triggers the restart, polls until the fresh server answers again, then auto-reloads the page. Falls back to a "reopen manually" hint if it can't reconnect.
+- New REST endpoints `GET /api/check-update`, `POST /api/apply-update`, `POST /api/restart`; 18 new i18n keys across zh-TW / zh-CN / en-US / ja-JP.
+
+---
+
 ## [v1.9.0] - 2026-11-16
 
 ### 🎨 Merged Global Model Card + Hidden-Agent Enable Switches

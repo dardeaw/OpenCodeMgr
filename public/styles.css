@@ -605,6 +605,68 @@
       overflow: hidden;
     }
 
+    /* Self-update bell */
+    .update-bell {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #13151b;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .update-bell:hover { background: var(--card-hover); border-color: var(--accent); }
+    .update-bell .bell-icon { pointer-events: none; }
+    .update-bell .bell-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: var(--danger);
+      color: #fff;
+      font-size: 8px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 8px;
+      letter-spacing: .3px;
+      box-shadow: 0 0 0 2px var(--card-bg);
+      pointer-events: none;
+    }
+    .update-bell.has-update .bell-icon { animation: bell-ring 2.4s ease-in-out infinite; transform-origin: top center; }
+    @keyframes bell-ring {
+      0%, 60%, 100% { transform: rotate(0); }
+      10% { transform: rotate(14deg); }
+      20% { transform: rotate(-12deg); }
+      30% { transform: rotate(8deg); }
+      40% { transform: rotate(-6deg); }
+      50% { transform: rotate(4deg); }
+    }
+    .update-tooltip {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: #090a0d;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--text);
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-4px);
+      transition: opacity .15s ease, transform .15s ease, visibility .15s;
+      z-index: 1200;
+      pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .update-tooltip.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+
     /* Chat bubble styles */
     .msg-bubble {
       margin-bottom: 18px;

@@ -142,6 +142,9 @@ export async function handleHttpRequest(req, res) {
         case '/api/mcp-tools':
           return sendJson(res, 200, { server: MCP_SERVER_INFO, tools: MCP_TOOLS });
 
+        case '/api/check-update':
+          return sendJson(res, 200, await managerService.checkForUpdate());
+
         default:
           return sendJson(res, 404, { error: `Unknown GET endpoint: ${pathname}` });
       }
@@ -265,6 +268,19 @@ export async function handleHttpRequest(req, res) {
 
         case '/api/env-clone':
           return sendJson(res, 200, await managerService.cloneNodeToNode(data.sourceNode, data.targetNodes, data.options || {}));
+
+        // Self-update
+        case '/api/apply-update':
+          return sendJson(res, 200, await managerService.applyUpdate(data.tag));
+
+        case '/api/restart': {
+          const r = await managerService.restartServer();
+          // For a detached respawn we must NOT keep this process alive holding the port.
+          if (r.ok && r.mode === 'standalone') {
+            setTimeout(() => process.exit(0), 400);
+          }
+          return sendJson(res, r.ok ? 200 : 500, r);
+        }
 
         default:
           return sendJson(res, 404, { error: `Unknown POST endpoint: ${pathname}` });

@@ -98,6 +98,7 @@ async function initApp() {
   await loadSessions();
   await reloadAll();
   testNodeHealth(currentNode);
+  checkForUpdateBanner();
 }
 
 initApp();

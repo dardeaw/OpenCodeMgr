@@ -13,7 +13,7 @@
   <header>
     <div class="logo-area">
       <h1>OpenCode Manager</h1>
-      <span class="badge">v1.9.0</span>
+      <span class="badge">v1.10.0</span>
       
       <!-- Dynamic Node Selector -->
       <div class="node-bar">
@@ -28,6 +28,11 @@
       <span class="badge" id="host-badge" style="color: #38bdf8;">192.168.68.102</span>
     </div>
     <div style="display: flex; align-items: center; gap: 10px;">
+      <div class="update-bell" id="update-bell" style="display:none;" onmouseenter="showUpdateTooltip()" onmouseleave="hideUpdateTooltip()" onclick="openUpdateModal()">
+        <span class="bell-icon">🔔</span>
+        <span class="bell-badge" id="bell-badge"></span>
+        <div class="update-tooltip" id="update-tooltip"></div>
+      </div>
       <select id="lang-selector" class="node-select" onchange="changeLanguage(this.value)" style="padding: 5px 8px; font-size: 12px; background: #13151b; border: 1px solid var(--border); border-radius: 5px; color: var(--text);">
         <option value="zh-TW">繁體中文</option>
         <option value="zh-CN">简体中文</option>
@@ -1117,6 +1122,20 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- Self-Update Modal -->
+  <div class="modal-overlay" id="update-modal" onclick="closeUpdateModal(event)">
+    <div class="node-modal-box" style="max-width: 520px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 style="font-size: 14px; font-weight: 600; color: #fff;" data-i18n="updateModalTitle">🔔 檢查更新</h3>
+        <button class="btn btn-sm" onclick="closeUpdateModalDirect()" data-i18n="closeBtn">✕ 關閉</button>
+      </div>
+      <div class="modal-body">
+        <div id="update-status" style="font-size: 13px; color: var(--text-muted); line-height: 1.7;"></div>
+        <div id="update-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;"></div>
+      </div>
+    </div>
+  </div>
 
   <script src="/i18n.js"></script>
   <script src="/js/core.js"></script>

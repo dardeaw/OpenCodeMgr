@@ -177,6 +177,151 @@ function showToast(msg) {
   setTimeout(() => { el.style.display = 'none'; }, 2500);
 }
 
+// ============================================================================
+// 4b. Self-Update (GitHub tag check + auto pull)
+// ============================================================================
+
+let updateInfoCache = null;
+
+async function checkForUpdateBanner() {
+  try {
+    const info = await apiGet('/api/check-update');
+    updateInfoCache = info;
+    const bell = document.getElementById('update-bell');
+    const badge = document.getElementById('bell-badge');
+    if (!bell || !badge) return;
+    if (info && info.ok && info.hasUpdate) {
+      bell.style.display = 'inline-flex';
+      bell.classList.add('has-update');
+      badge.textContent = 'NEW';
+      const tip = document.getElementById('update-tooltip');
+      if (tip) tip.textContent = `${t('updateAvailableTooltip')}: ${info.current} → ${info.latest}`;
+    } else {
+      bell.style.display = 'none';
+      bell.classList.remove('has-update');
+    }
+  } catch {
+    // silently ignore — update check must never break the app
+  }
+}
+
+function showUpdateTooltip() {
+  const tip = document.getElementById('update-tooltip');
+  if (tip && updateInfoCache && updateInfoCache.hasUpdate) tip.classList.add('visible');
+}
+
+function hideUpdateTooltip() {
+  const tip = document.getElementById('update-tooltip');
+  if (tip) tip.classList.remove('visible');
+}
+
+function openUpdateModal() {
+  const modal = document.getElementById('update-modal');
+  if (!modal) return;
+  renderUpdateModal(updateInfoCache);
+  modal.style.display = 'flex';
+}
+
+function closeUpdateModal(e) {
+  if (e && e.target.id === 'update-modal') closeUpdateModalDirect();
+}
+
+function closeUpdateModalDirect() {
+  const modal = document.getElementById('update-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderUpdateModal(info) {
+  const status = document.getElementById('update-status');
+  const actBox = document.getElementById('update-actions');
+  if (!status || !actBox) return;
+
+  if (!info || !info.ok) {
+    status.innerHTML = `<div style="color:#f87171;">${t('updateCheckFailed')}</div>`;
+    actBox.innerHTML = '';
+    return;
+  }
+  if (!info.hasUpdate) {
+    status.innerHTML = `<div style="color:#34d399;">✓ ${t('updateUpToDate')} <b>${info.current}</b></div>`;
+    actBox.innerHTML = '';
+    return;
+  }
+
+  const dirtyNote = info.dirty
+    ? `<div style="margin-top:8px;color:#fbbf24;">⚠ ${t('updateDirtyWarn')}</div>`
+    : '';
+  status.innerHTML =
+    `<div>${t('updateCurrentVersion')}: <b>${info.current}</b></div>` +
+    `<div>${t('updateLatestVersion')}: <b style="color:#38bdf8;">${info.latest}</b></div>` +
+    dirtyNote;
+
+  if (info.canAutoUpdate) {
+    actBox.innerHTML =
+      `<button class="btn btn-sm" onclick="closeUpdateModalDirect()">${t('cancelBtn')}</button>` +
+      `<button class="btn btn-primary" id="btn-apply-update" style="background:linear-gradient(135deg,#10b981,#059669);border:none;font-weight:600;" onclick="applyUpdateAction('${info.latest}')">${t('updateApplyBtn')}</button>`;
+  } else {
+    actBox.innerHTML =
+      `<span style="font-size:12px;color:var(--text-muted);align-self:center;">${t('updateManualHint')}</span>`;
+  }
+}
+
+async function applyUpdateAction(tag) {
+  const btn = document.getElementById('btn-apply-update');
+  const status = document.getElementById('update-status');
+  if (btn) { btn.disabled = true; btn.textContent = t('updateApplying'); }
+  try {
+    const res = await apiPost('/api/apply-update', { tag });
+    if (res && res.ok && res.updated) {
+      if (status) status.innerHTML =
+        `<div style="color:#34d399;">✓ ${t('updateSuccess')} <b>${res.from}</b> → <b>${res.to}</b></div>` +
+        `<div style="margin-top:10px;color:#fbbf24;" id="update-restart-note">${t('updateRestarting')}</div>`;
+      const actBox = document.getElementById('update-actions');
+      if (actBox) actBox.innerHTML = '';
+      showToast(t('updateSuccess'));
+      await restartAndWait();
+    } else {
+      const reason = (res && res.error) || 'unknown';
+      const map = {
+        'already-latest': t('updateUpToDate'),
+        'dirty-worktree': t('updateDirtyErr'),
+        'not-fast-forward': t('updateNotFF'),
+        'tag-not-found': t('updateTagMissing'),
+        'fetch-failed': t('updateFetchFail')
+      };
+      if (status) status.innerHTML = `<div style="color:#f87171;">✕ ${map[reason] || ('Update failed: ' + reason)}</div>`;
+      const actBox = document.getElementById('update-actions');
+      if (actBox) actBox.innerHTML =
+        `<button class="btn btn-sm" onclick="closeUpdateModalDirect()">${t('closeBtn')}</button>`;
+    }
+  } catch (e) {
+    if (status) status.innerHTML = `<div style="color:#f87171;">✕ ${t('updateCheckFailed')}</div>`;
+  }
+}
+
+// Trigger server self-restart, then poll until the fresh server answers again.
+async function restartAndWait() {
+  const note = document.getElementById('update-restart-note');
+  let mode = 'standalone';
+  try {
+    const r = await apiPost('/api/restart', {});
+    if (r && r.mode) mode = r.mode;
+  } catch {
+    // standalone respawn kills this process mid-request -> fetch may reject; that's fine.
+  }
+  if (note) note.textContent = t('updateRestarting');
+  await new Promise(r => setTimeout(r, 1500));
+  for (let i = 0; i < 40; i++) {
+    try {
+      const health = await fetch('/api/nodes', { cache: 'no-store' });
+      if (health.ok) { window.location.reload(); return; }
+    } catch { /* server still down */ }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  // Timed out: tell the user to reopen manually.
+  if (note) { note.style.color = '#fbbf24'; note.textContent = t('updateReopenHint'); }
+}
+
+
 function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
