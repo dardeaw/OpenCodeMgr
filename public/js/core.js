@@ -105,7 +105,54 @@ function applyDomI18n() {
     const k = el.getAttribute('data-i18n-title');
     if (k) el.title = t(k);
   });
+
+  // Sync localized help text for data-help-key labels onto their title attr.
+  document.querySelectorAll('[data-help-key]').forEach(el => {
+    const k = el.getAttribute('data-help-key');
+    if (k) el.title = t('help.' + k);
+  });
 }
+
+// ---- Settings hover help tooltip (delegated, language-aware via i18n) ----
+let _helpTipEl = null;
+function _getHelpTip() {
+  if (!_helpTipEl) {
+    _helpTipEl = document.createElement('div');
+    _helpTipEl.id = 'help-tooltip';
+    document.body.appendChild(_helpTipEl);
+  }
+  return _helpTipEl;
+}
+function _hideHelpTip() {
+  if (_helpTipEl) _helpTipEl.classList.remove('visible');
+}
+function _showHelpTipFor(el) {
+  const key = el.getAttribute('data-help-key');
+  if (!key) return false;
+  const txt = t('help.' + key);
+  if (!txt || txt === 'help.' + key) return false;
+  const tip = _getHelpTip();
+  tip.textContent = txt;
+  tip.classList.add('visible');
+  const r = el.getBoundingClientRect();
+  const tr = tip.getBoundingClientRect();
+  let left = r.left;
+  if (left + tr.width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - tr.width - 8);
+  let top = r.bottom + 6;
+  if (top + tr.height > window.innerHeight - 8) top = Math.max(8, r.top - tr.height - 6);
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+  return true;
+}
+document.addEventListener('mouseover', (e) => {
+  const lab = e.target.closest && e.target.closest('label[data-help-key]');
+  if (lab) _showHelpTipFor(lab);
+});
+document.addEventListener('mouseout', (e) => {
+  const lab = e.target.closest && e.target.closest('label[data-help-key]');
+  if (lab) _hideHelpTip();
+});
+window.addEventListener('scroll', _hideHelpTip, true);
 
 function changeLanguage(lang) {
   if (!I18N[lang]) return;

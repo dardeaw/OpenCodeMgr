@@ -13,7 +13,7 @@
   <header>
     <div class="logo-area">
       <h1>OpenCode Manager</h1>
-      <span class="badge">v1.11.0</span>
+      <span class="badge">v1.12.0</span>
       
       <!-- Dynamic Node Selector -->
       <div class="node-bar">
@@ -135,20 +135,20 @@
 
         <!-- Primary -->
         <div class="gsm-block">
-          <label data-i18n="primaryModelLbl">主要對話模型 (model)</label>
+          <label data-i18n="primaryModelLbl" data-help-key="primaryModel">主要對話模型 (model)</label>
           <input type="text" id="global-primary-model" list="available-models-datalist" placeholder="provider/model-id (e.g. gufo/gufo-qwen3.8-flash-next)">
         </div>
 
         <!-- Small model — v1 only (v2 folds it into the title agent) -->
         <div class="gsm-block" id="gsm-small-block">
-          <label data-i18n="smallModelLbl">輕量輔助模型 (small_model)</label>
+          <label data-i18n="smallModelLbl" data-help-key="smallModel">輕量輔助模型 (small_model)</label>
           <input type="text" id="global-small-model" list="available-models-datalist" placeholder="provider/model-id">
         </div>
 
         <!-- Compaction (model + system prompt + enable switch) -->
         <div class="gsm-block gsm-agent">
           <div class="gsm-agent-head">
-            <label data-i18n="compactionModelLbl">上下文壓縮模型 (agent.compaction.model)</label>
+            <label data-i18n="compactionModelLbl" data-help-key="compactionModel">上下文壓縮模型 (agent.compaction.model)</label>
             <label class="oc-switch" data-i18n-title="enableCompactionAgent">
               <input type="checkbox" id="compaction-enabled" onchange="onCoreAgentToggle()">
               <span class="oc-slider"></span>
@@ -162,7 +162,7 @@
         <!-- Title (model only + enable switch; built-in fixed prompt) -->
         <div class="gsm-block gsm-agent">
           <div class="gsm-agent-head">
-            <label data-i18n="titleModelLbl">對話自動命名模型 (agent.title.model)</label>
+            <label data-i18n="titleModelLbl" data-help-key="titleModel">對話自動命名模型 (agent.title.model)</label>
             <label class="oc-switch" data-i18n-title="enableTitleAgent">
               <input type="checkbox" id="title-enabled" onchange="onCoreAgentToggle()">
               <span class="oc-slider"></span>
@@ -218,7 +218,7 @@
                 <input type="text" id="prov-name" placeholder="gufo flash-next (55:8741)">
               </div>
               <div class="col">
-                <label data-i18n="providerNpmLbl">AI SDK 驅動套件 (npm package)</label>
+                <label data-i18n="providerNpmLbl" data-help-key="providerNpm">AI SDK 驅動套件 (npm package)</label>
                 <input type="text" id="prov-npm" list="npm-packages-datalist" placeholder="@ai-sdk/openai-compatible">
                 <datalist id="npm-packages-datalist">
                   <option value="@ai-sdk/openai-compatible" data-i18n="sdkOpenaiCompat">OpenAI 相容介面 (llama.cpp / vLLM / gufo / strata)</option>
@@ -233,18 +233,18 @@
 
             <div class="row">
               <div class="col">
-                <label data-i18n="providerBaseUrlLbl">API 端點網址 (options.baseURL)</label>
+                <label data-i18n="providerBaseUrlLbl" data-help-key="providerBaseUrl">API 端點網址 (options.baseURL)</label>
                 <input type="text" id="prov-baseurl" placeholder="http://192.168.68.55:8741/v1" onchange="probeCurrentProviderModels()">
               </div>
               <div class="col">
-                <label data-i18n="providerApiKeyJsoncLbl">設定檔 API Key (options.apiKey in opencode.jsonc，選填)</label>
+                <label data-i18n="providerApiKeyJsoncLbl" data-help-key="providerApiKeyJsonc">設定檔 API Key (options.apiKey in opencode.jsonc，選填)</label>
                 <input type="password" id="prov-apikey-jsonc" data-i18n-placeholder="providerApiKeyJsoncPh" placeholder="選填，明文寫入 opencode.jsonc" onfocus="this.type='text'" onblur="this.type='password'">
               </div>
             </div>
 
             <!-- Global /connect auth.json Credential Bar -->
             <div style="background: #090a0d; border: 1px solid #1e293b; border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; flex-shrink: 0;">
-              <label style="color: #a78bfa; margin-bottom: 6px;" data-i18n="providerAuthKeyLbl">全域認證金鑰 (/connect auth.json Key，優先推薦)</label>
+              <label style="color: #a78bfa; margin-bottom: 6px;" data-i18n="providerAuthKeyLbl" data-help-key="providerAuthKey">全域認證金鑰 (/connect auth.json Key，優先推薦)</label>
               <div style="display: flex; gap: 8px; align-items: center;">
                 <input type="password" id="prov-auth-key" data-i18n-placeholder="providerAuthKeyPh" placeholder="輸入金鑰 (如 oc_sk_... 或 sk-...)" style="flex: 1;" onfocus="this.type='text'" onblur="this.type='password'">
                 <button class="btn btn-sm" style="background: rgba(167, 139, 250, 0.15); color: #c4b5fd; border-color: rgba(167, 139, 250, 0.35); white-space: nowrap;" onclick="saveProviderAuthKey()" data-i18n="saveAuthKeyBtn">🔑 寫入 auth.json</button>
@@ -299,25 +299,25 @@
                 </div>
                 <div class="row">
                   <div class="col">
-                    <label data-i18n="modelCtxLimitLbl">上下文視窗上限 (limit.context)</label>
+                    <label data-i18n="modelCtxLimitLbl" data-help-key="ctxLimit">上下文視窗上限 (limit.context)</label>
                     <input type="number" id="sm-context" placeholder="262144">
                   </div>
                   <div class="col">
-                    <label data-i18n="modelInputLimitLbl">最大輸入 Token (limit.input，選填)</label>
+                    <label data-i18n="modelInputLimitLbl" data-help-key="inputLimit">最大輸入 Token (limit.input，選填)</label>
                     <input type="number" id="sm-input" placeholder="262144">
                   </div>
                   <div class="col">
-                    <label data-i18n="modelOutputLimitLbl">最大輸出 Token (limit.output)</label>
+                    <label data-i18n="modelOutputLimitLbl" data-help-key="outputLimit">最大輸出 Token (limit.output)</label>
                     <input type="number" id="sm-output" placeholder="8192">
                   </div>
                 </div>
                 <div class="row">
                   <div class="col">
-                    <label data-i18n="modelTempLbl">預設溫度 (options.temperature，選填)</label>
+                    <label data-i18n="modelTempLbl" data-help-key="temp">預設溫度 (options.temperature，選填)</label>
                     <input type="number" step="0.05" id="sm-temp" placeholder="0.4">
                   </div>
                   <div class="col">
-                    <label data-i18n="modelReasoningEffortLbl">推論強度 (options.reasoningEffort，如 low/medium/high/max)</label>
+                    <label data-i18n="modelReasoningEffortLbl" data-help-key="reasoningEffort">推論強度 (options.reasoningEffort，如 low/medium/high/max)</label>
                     <select id="sm-effort">
                       <option value="" data-i18n="effortDefault">不指定</option>
                       <option value="minimal">minimal</option>
@@ -328,14 +328,14 @@
                     </select>
                   </div>
                   <div class="col">
-                    <label data-i18n="modelAttachmentLbl">支援附件與圖片上傳</label>
+                    <label data-i18n="modelAttachmentLbl" data-help-key="attachment">支援附件與圖片上傳</label>
                     <select id="sm-attachment">
                       <option value="true" data-i18n="boolTrue">是 (true)</option>
                       <option value="false" data-i18n="boolFalse">否 (false)</option>
                     </select>
                   </div>
                   <div class="col">
-                    <label data-i18n="modelModalitiesInputLbl">支援輸入模態 (modalities.input)</label>
+                    <label data-i18n="modelModalitiesInputLbl" data-help-key="modalities">支援輸入模態 (modalities.input)</label>
                     <input type="text" id="sm-modalities" placeholder="text, image">
                   </div>
                 </div>
@@ -428,7 +428,7 @@
             <input type="text" id="agent-id" placeholder="my-agent">
           </div>
           <div class="col">
-            <label data-i18n="agentMode">執行模式 (Mode)</label>
+            <label data-i18n="agentMode" data-help-key="agentMode">執行模式 (Mode)</label>
             <select id="agent-mode">
               <option value="all" data-i18n="modeAll">主對話與子代理通用 (all)</option>
               <option value="subagent" data-i18n="modeSubagent">僅作為子代理 (subagent)</option>
@@ -436,7 +436,7 @@
             </select>
           </div>
           <div class="col">
-            <label data-i18n="agentModel">指定模型 (Model Override)</label>
+            <label data-i18n="agentModel" data-help-key="agentModel">指定模型 (Model Override)</label>
             <input type="text" id="agent-model" placeholder="opencode/deepseek-v4-flash-free">
           </div>
         </div>
@@ -444,14 +444,14 @@
         <div style="display: flex; gap: 16px; flex: 1; min-height: 0; overflow: hidden;">
           <!-- Left Column: Role System Prompt -->
           <div style="flex: 1.1; display: flex; flex-direction: column; min-height: 0; min-width: 0;">
-            <label data-i18n="agentPrompt" style="flex-shrink: 0;">角色系統提示詞 (System Prompt)</label>
+            <label data-i18n="agentPrompt" style="flex-shrink: 0;" data-help-key="agentPrompt">角色系統提示詞 (System Prompt)</label>
             <textarea id="agent-prompt" style="flex: 1; min-height: 0; height: 100%; resize: none;"></textarea>
           </div>
 
           <!-- Right Column: Role Description, Tools & Permissions, Per-Agent Plugins -->
           <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; overflow-y: auto; padding-right: 2px;">
             <div>
-              <label data-i18n="agentDesc">角色職責簡介（供主模型判斷何時委派）</label>
+              <label data-i18n="agentDesc" data-help-key="agentDesc">角色職責簡介（供主模型判斷何時委派）</label>
               <textarea id="agent-desc" data-i18n-placeholder="agentDescPh" placeholder="簡述角色專長與自動觸發時機" style="min-height: 62px; height: 68px; resize: vertical; line-height: 1.45;"></textarea>
             </div>
 
@@ -617,7 +617,7 @@
             <input type="text" id="mcp-id" placeholder="docgraph">
           </div>
           <div class="col">
-            <label data-i18n="mcpType">傳輸類型 (Type)</label>
+            <label data-i18n="mcpType" data-help-key="mcpType">傳輸類型 (Type)</label>
             <select id="mcp-type">
               <option value="local" data-i18n="typeLocal">本機執行檔 (local)</option>
               <option value="remote" data-i18n="typeRemote">遠端網址 (remote)</option>
@@ -631,18 +631,18 @@
             </select>
           </div>
           <div class="col">
-            <label data-i18n="mcpTimeout">超時時間毫秒 (Timeout)</label>
+            <label data-i18n="mcpTimeout" data-help-key="mcpTimeout">超時時間毫秒 (Timeout)</label>
             <input type="number" id="mcp-timeout" placeholder="60000">
           </div>
         </div>
 
         <div style="margin-bottom: 12px;">
-          <label data-i18n="mcpCommand">執行指令 (Command)</label>
+          <label data-i18n="mcpCommand" data-help-key="mcpCommand">執行指令 (Command)</label>
           <input type="text" id="mcp-command" placeholder="C:Users馮indocgraph.exe 或 npx">
         </div>
 
         <div style="margin-bottom: 12px;">
-          <label data-i18n="mcpArgs">指令參數 (Arguments，以空格分開或 JSON 陣列)</label>
+          <label data-i18n="mcpArgs" data-help-key="mcpArgs">指令參數 (Arguments，以空格分開或 JSON 陣列)</label>
           <input type="text" id="mcp-args" placeholder='serve --path "..."'>
         </div>
       </div>
@@ -683,14 +683,14 @@
             <input type="text" id="plugin-filename" placeholder="my-guard.js">
           </div>
           <div class="col">
-            <label data-i18n="pluginEnabledLbl">全域掛載狀態 (opencode.jsonc plugin 陣列)</label>
+            <label data-i18n="pluginEnabledLbl" data-help-key="pluginEnabled">全域掛載狀態 (opencode.jsonc plugin 陣列)</label>
             <select id="plugin-enabled">
               <option value="true" data-i18n="pluginMountedOpt">🟢 啟用掛載 (寫入 opencode.jsonc)</option>
               <option value="false" data-i18n="pluginUnmountedOpt">⚪ 停用卸載 (僅保留 .js 檔案)</option>
             </select>
           </div>
           <div class="col">
-            <label data-i18n="pluginScopeModeLbl">角色生效範圍 (Per-Agent Assignment Mode)</label>
+            <label data-i18n="pluginScopeModeLbl" data-help-key="pluginScope">角色生效範圍 (Per-Agent Assignment Mode)</label>
             <select id="plugin-scope-mode" onchange="onPluginScopeModeChange()">
               <option value="all" data-i18n="scopeAllAgents">🌐 全部角色通用 (All Agents)</option>
               <option value="include" data-i18n="scopeIncludeAgents">🎯 僅指定角色生效 (Only Selected Agents)</option>
@@ -761,7 +761,7 @@
         </div>
         <div class="row">
           <div class="col">
-            <label data-i18n="advLogLevelLbl">日誌等級 (logLevel)</label>
+            <label data-i18n="advLogLevelLbl" data-help-key="advLogLevel">日誌等級 (logLevel)</label>
             <select id="adv-loglevel">
               <option value="" data-i18n="advNotSet">(未設定)</option>
               <option value="DEBUG">DEBUG</option>
@@ -771,7 +771,7 @@
             </select>
           </div>
           <div class="col">
-            <label data-i18n="advSnapshotsLbl">快照回溯 (snapshots)</label>
+            <label data-i18n="advSnapshotsLbl" data-help-key="advSnapshots">快照回溯 (snapshots)</label>
             <select id="adv-snapshots">
               <option value="" data-i18n="advNotSet">(未設定)</option>
               <option value="true">✅ true（可 /undo 回滾）</option>
@@ -779,7 +779,7 @@
             </select>
           </div>
           <div class="col">
-            <label data-i18n="advShellLbl">指定 Shell (shell)</label>
+            <label data-i18n="advShellLbl" data-help-key="advShell">指定 Shell (shell)</label>
             <input type="text" id="adv-shell" list="adv-shell-datalist" placeholder="powershell / bash / zsh / 絕對路徑">
             <datalist id="adv-shell-datalist">
               <option value="powershell"></option>
@@ -789,7 +789,7 @@
             </datalist>
           </div>
           <div class="col">
-            <label data-i18n="advDoomLoopLbl">反死迴圈 (permission.doom_loop)</label>
+            <label data-i18n="advDoomLoopLbl" data-help-key="advDoomLoop">反死迴圈 (permission.doom_loop)</label>
             <select id="adv-doom-loop">
               <option value="" data-i18n="advNotSet">(未設定)</option>
               <option value="allow">allow（放行重複）</option>
@@ -800,13 +800,13 @@
         </div>
         <div class="row">
           <div class="col" style="flex: 2;">
-            <label data-i18n="advInstructionsLbl">指令檔清單 (instructions・每行一路徑/glob)</label>
+            <label data-i18n="advInstructionsLbl" data-help-key="advInstructions">指令檔清單 (instructions・每行一路徑/glob)</label>
             <textarea id="adv-instructions" style="height: 60px; font-family: var(--font-mono); font-size: 12px;" placeholder="C:\Users\...\AGENTS.local.md"></textarea>
           </div>
         </div>
         <div class="row">
           <div class="col">
-            <label data-i18n="advAutoResizeLbl">圖片自動縮放 (auto_resize)</label>
+            <label data-i18n="advAutoResizeLbl" data-help-key="advAutoResize">圖片自動縮放 (auto_resize)</label>
             <select id="adv-auto-resize">
               <option value="" data-i18n="advNotSet">(未設定)</option>
               <option value="true">✅ true</option>
@@ -814,21 +814,21 @@
             </select>
           </div>
           <div class="col">
-            <label data-i18n="advMaxWidthLbl">max_width (px)</label>
+            <label data-i18n="advMaxWidthLbl" data-help-key="advMaxWidth">max_width (px)</label>
             <input type="number" id="adv-max-width" placeholder="2000">
           </div>
           <div class="col">
-            <label data-i18n="advMaxHeightLbl">max_height (px)</label>
+            <label data-i18n="advMaxHeightLbl" data-help-key="advMaxHeight">max_height (px)</label>
             <input type="number" id="adv-max-height" placeholder="2000">
           </div>
           <div class="col">
-            <label data-i18n="advMaxBytesLbl">max_base64_bytes</label>
+            <label data-i18n="advMaxBytesLbl" data-help-key="advMaxBytes">max_base64_bytes</label>
             <input type="number" id="adv-max-bytes" placeholder="5242880">
           </div>
         </div>
         <div class="row">
           <div class="col">
-            <label data-i18n="advCompAutoLbl">壓縮自動觸發 (compaction.auto)</label>
+            <label data-i18n="advCompAutoLbl" data-help-key="advCompAuto">壓縮自動觸發 (compaction.auto)</label>
             <select id="adv-comp-auto">
               <option value="" data-i18n="advNotSet">(未設定)</option>
               <option value="true">✅ true</option>
@@ -836,11 +836,11 @@
             </select>
           </div>
           <div class="col">
-            <label data-i18n="advTailTurnsLbl">tail_turns（保留尾輪數）</label>
+            <label data-i18n="advTailTurnsLbl" data-help-key="advTailTurns">tail_turns（保留尾輪數）</label>
             <input type="number" id="adv-tail-turns" placeholder="6">
           </div>
           <div class="col">
-            <label data-i18n="advPruneLbl">裁剪冗餘 (compaction.prune)</label>
+            <label data-i18n="advPruneLbl" data-help-key="advPrune">裁剪冗餘 (compaction.prune)</label>
             <select id="adv-prune">
               <option value="" data-i18n="advNotSet">(未設定)</option>
               <option value="true">✅ true</option>
@@ -848,7 +848,7 @@
             </select>
           </div>
           <div class="col">
-            <label data-i18n="advReservedLbl">reserved（預留 tokens）</label>
+            <label data-i18n="advReservedLbl" data-help-key="advReserved">reserved（預留 tokens）</label>
             <input type="number" id="adv-reserved" placeholder="24144">
           </div>
         </div>
@@ -914,7 +914,7 @@
               <input type="text" id="edit-node-name" placeholder="🐧 Nobara (.67)">
             </div>
             <div class="col">
-              <label data-i18n="nodeType">連線類型 (Type)</label>
+              <label data-i18n="nodeType" data-help-key="nodeType">連線類型 (Type)</label>
               <select id="edit-node-type">
                 <option value="ssh" data-i18n="nodeTypeSsh">SSH 直連</option>
                 <option value="local" data-i18n="nodeTypeLocal">本機 (Local)</option>
@@ -935,12 +935,12 @@
           </div>
 
           <div style="margin-bottom: 12px;">
-            <label data-i18n="nodeConfigDir">OpenCode 配置目錄路徑 (Config Directory)</label>
+            <label data-i18n="nodeConfigDir" data-help-key="nodeConfigDir">OpenCode 配置目錄路徑 (Config Directory)</label>
             <input type="text" id="edit-node-config" placeholder="/home/nobara-user/.config/opencode">
           </div>
 
           <div>
-            <label data-i18n="nodeDbPath">OpenCode SQLite 資料庫路徑 (DB Path)</label>
+            <label data-i18n="nodeDbPath" data-help-key="nodeDbPath">OpenCode SQLite 資料庫路徑 (DB Path)</label>
             <input type="text" id="edit-node-db" placeholder="/home/nobara-user/.local/share/opencode/opencode.db">
           </div>
         </div>

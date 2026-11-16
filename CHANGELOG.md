@@ -4,6 +4,17 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.12.0] - 2026-11-17
+
+### ✨ 設定項 hover 說明（語系感知工具提示）
+
+- **滑鼠移到設定標籤即顯示說明**：為各分頁不易理解的設定標籤加上悬停提示（cursor: help + 自訂浮層氣泡），取代原生 `title`，即開即用、可換行。
+- **涵蓋 41 個設定標籤**：全域模型（主要／輕量／壓縮／命名）、模型參數（context／input／output／temperature／reasoningEffort／attachment／modalities）、服務商（npm／baseURL／API Key／全域認證金鑰）、智能體（mode／model／prompt／desc）、MCP（type／timeout／command／args）、插件（掛載狀態／生效範圍）、進階設定 13 項、節點管理（type／config dir／db path）。
+- **語系感知**：說明文案走 i18n `help.*` 子表，切換語言即時更新；共 41 × 4 = 164 條（zh-TW / zh-CN / en-US / ja-JP）。
+- **實作**：`index.html` 標籤加 `data-help-key`；`core.js` 以事件委派（mouseover/out）驅動單一浮層 `#help-tooltip`，並在 `applyDomI18n()` 同步本地化 `title`；`styles.css` 新增氣泡樣式。
+
+---
+
 ## [v1.11.0] - 2026-11-17
 
 ### ✨ 全域進階設定操作介面（Raw JSON 分頁上方結構化卡片）

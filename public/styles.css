@@ -939,3 +939,30 @@
       gap: 4px;
       flex-shrink: 0;
     }
+
+    /* Settings hover help tooltip (data-help-key driven, localized) */
+    label[data-help-key] { cursor: help; }
+    #help-tooltip {
+      position: fixed;
+      z-index: 9999;
+      max-width: 320px;
+      background: #090a0d;
+      color: var(--text);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 8px 11px;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-line;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(4px);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+    #help-tooltip.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
