@@ -529,3 +529,71 @@ async function saveRawJsonc() {
   showToast(t('rawJsonSaved'));
   await reloadAll();
 }
+
+// ============================================================================
+// Global Advanced Settings (structured UI over raw opencode.jsonc keys)
+// ============================================================================
+
+function renderAdvancedSettings() {
+  const cfg = state.config || {};
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v === null || v === undefined) ? '' : String(v); };
+  const setBool = (id, v) => { const el = document.getElementById(id); if (!el) return; el.value = (v === true) ? 'true' : (v === false) ? 'false' : ''; };
+
+  setVal('adv-loglevel', cfg.logLevel || '');
+  setBool('adv-snapshots', cfg.snapshots === undefined ? null : !!cfg.snapshots);
+  setVal('adv-shell', cfg.shell || '');
+  setVal('adv-doom-loop', (cfg.permission && typeof cfg.permission === 'object') ? (cfg.permission.doom_loop || '') : '');
+
+  const instr = Array.isArray(cfg.instructions) ? cfg.instructions.join('\n') : '';
+  setVal('adv-instructions', instr);
+
+  const img = (cfg.attachment && cfg.attachment.image && typeof cfg.attachment.image === 'object') ? cfg.attachment.image : {};
+  setBool('adv-auto-resize', img.auto_resize === undefined ? null : !!img.auto_resize);
+  setVal('adv-max-width', img.max_width ?? '');
+  setVal('adv-max-height', img.max_height ?? '');
+  setVal('adv-max-bytes', img.max_base64_bytes ?? '');
+
+  const comp = (cfg.compaction && typeof cfg.compaction === 'object') ? cfg.compaction : {};
+  setBool('adv-comp-auto', comp.auto === undefined ? null : !!comp.auto);
+  setVal('adv-tail-turns', comp.tail_turns ?? '');
+  setBool('adv-prune', comp.prune === undefined ? null : !!comp.prune);
+  setVal('adv-reserved', comp.reserved ?? '');
+}
+
+async function saveAdvancedSettings() {
+  showLoading(true);
+  try {
+    const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+    const boolOrNull = v => (v === 'true' ? true : v === 'false' ? false : null);
+    const adv = {
+      logLevel: g('adv-loglevel'),
+      snapshots: boolOrNull(g('adv-snapshots')),
+      shell: g('adv-shell').trim(),
+      instructions: g('adv-instructions').split(/\r?\n/).map(s => s.trim()).filter(Boolean),
+      attachmentImage: {
+        auto_resize: boolOrNull(g('adv-auto-resize')),
+        max_width: g('adv-max-width'),
+        max_height: g('adv-max-height'),
+        max_base64_bytes: g('adv-max-bytes')
+      },
+      doomLoop: g('adv-doom-loop'),
+      compactionPolicy: {
+        auto: boolOrNull(g('adv-comp-auto')),
+        tail_turns: g('adv-tail-turns'),
+        prune: boolOrNull(g('adv-prune')),
+        reserved: g('adv-reserved')
+      }
+    };
+    const r = await apiPost('/api/save-advanced-settings', { node: currentNode, adv });
+    if (r && r.ok) {
+      showToast(t('advSettingsSaved'));
+      await reloadAll();
+    } else {
+      alert((r && r.error) || 'Save failed');
+    }
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    showLoading(false);
+  }
+}

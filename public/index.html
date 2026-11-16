@@ -13,7 +13,7 @@
   <header>
     <div class="logo-area">
       <h1>OpenCode Manager</h1>
-      <span class="badge">v1.10.0</span>
+      <span class="badge">v1.11.0</span>
       
       <!-- Dynamic Node Selector -->
       <div class="node-bar">
@@ -753,6 +753,106 @@
 
     <!-- 5. Raw JSONC -->
     <div id="raw-json" class="tab-pane">
+      <!-- Global Advanced Settings (structured controls over previously raw-only keys) -->
+      <div class="card" style="margin-bottom: 14px; border-color: #818cf8;">
+        <div class="card-title">
+          <span data-i18n="advSettingsTitle">⚙️ 全域進階設定（logLevel / snapshots / shell / instructions / attachment / doom_loop / compaction）</span>
+          <button class="btn btn-primary btn-sm" onclick="saveAdvancedSettings()" data-i18n="saveAdvSettingsBtn">💾 儲存進階設定</button>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label data-i18n="advLogLevelLbl">日誌等級 (logLevel)</label>
+            <select id="adv-loglevel">
+              <option value="" data-i18n="advNotSet">(未設定)</option>
+              <option value="DEBUG">DEBUG</option>
+              <option value="INFO">INFO</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="advSnapshotsLbl">快照回溯 (snapshots)</label>
+            <select id="adv-snapshots">
+              <option value="" data-i18n="advNotSet">(未設定)</option>
+              <option value="true">✅ true（可 /undo 回滾）</option>
+              <option value="false">❌ false（省空間・不可回滾）</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="advShellLbl">指定 Shell (shell)</label>
+            <input type="text" id="adv-shell" list="adv-shell-datalist" placeholder="powershell / bash / zsh / 絕對路徑">
+            <datalist id="adv-shell-datalist">
+              <option value="powershell"></option>
+              <option value="bash"></option>
+              <option value="zsh"></option>
+              <option value="cmd"></option>
+            </datalist>
+          </div>
+          <div class="col">
+            <label data-i18n="advDoomLoopLbl">反死迴圈 (permission.doom_loop)</label>
+            <select id="adv-doom-loop">
+              <option value="" data-i18n="advNotSet">(未設定)</option>
+              <option value="allow">allow（放行重複）</option>
+              <option value="ask">ask（詢問）</option>
+              <option value="deny">deny（擋掉打轉迴圈）</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col" style="flex: 2;">
+            <label data-i18n="advInstructionsLbl">指令檔清單 (instructions・每行一路徑/glob)</label>
+            <textarea id="adv-instructions" style="height: 60px; font-family: var(--font-mono); font-size: 12px;" placeholder="C:\Users\...\AGENTS.local.md"></textarea>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label data-i18n="advAutoResizeLbl">圖片自動縮放 (auto_resize)</label>
+            <select id="adv-auto-resize">
+              <option value="" data-i18n="advNotSet">(未設定)</option>
+              <option value="true">✅ true</option>
+              <option value="false">❌ false</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="advMaxWidthLbl">max_width (px)</label>
+            <input type="number" id="adv-max-width" placeholder="2000">
+          </div>
+          <div class="col">
+            <label data-i18n="advMaxHeightLbl">max_height (px)</label>
+            <input type="number" id="adv-max-height" placeholder="2000">
+          </div>
+          <div class="col">
+            <label data-i18n="advMaxBytesLbl">max_base64_bytes</label>
+            <input type="number" id="adv-max-bytes" placeholder="5242880">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label data-i18n="advCompAutoLbl">壓縮自動觸發 (compaction.auto)</label>
+            <select id="adv-comp-auto">
+              <option value="" data-i18n="advNotSet">(未設定)</option>
+              <option value="true">✅ true</option>
+              <option value="false">❌ false</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="advTailTurnsLbl">tail_turns（保留尾輪數）</label>
+            <input type="number" id="adv-tail-turns" placeholder="6">
+          </div>
+          <div class="col">
+            <label data-i18n="advPruneLbl">裁剪冗餘 (compaction.prune)</label>
+            <select id="adv-prune">
+              <option value="" data-i18n="advNotSet">(未設定)</option>
+              <option value="true">✅ true</option>
+              <option value="false">❌ false</option>
+            </select>
+          </div>
+          <div class="col">
+            <label data-i18n="advReservedLbl">reserved（預留 tokens）</label>
+            <input type="number" id="adv-reserved" placeholder="24144">
+          </div>
+        </div>
+      </div>
       <div class="card" style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin-bottom: 0; overflow: hidden;">
         <div class="card-title" style="flex-shrink: 0;">
           <span data-i18n="rawJsonTitle">opencode.jsonc 原始設定檔</span>

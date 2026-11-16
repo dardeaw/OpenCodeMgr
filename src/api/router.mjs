@@ -119,6 +119,9 @@ export async function handleHttpRequest(req, res) {
         case '/api/config':
           return sendJson(res, 200, await managerService.getNodeConfigSnapshot(nodeId));
 
+        case '/api/advanced-settings':
+          return sendJson(res, 200, await managerService.getAdvancedSettings(nodeId));
+
         case '/api/skills':
           return sendJson(res, 200, await managerService.listSkills(nodeId));
 
@@ -261,6 +264,10 @@ export async function handleHttpRequest(req, res) {
         // Raw opencode.jsonc
         case '/api/save-raw-jsonc':
           return sendJson(res, 200, await managerService.saveRawJsonc(nodeId, data.content));
+
+        // Global Advanced Settings (structured UI over raw jsonc keys)
+        case '/api/save-advanced-settings':
+          return sendJson(res, 200, await managerService.saveAdvancedSettings(nodeId, data.adv || {}));
 
         // Environment Clone, Export & Import
         case '/api/env-import':

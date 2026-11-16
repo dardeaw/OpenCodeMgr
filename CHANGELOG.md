@@ -4,6 +4,26 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.11.0] - 2026-11-17
+
+### ✨ 全域進階設定操作介面（Raw JSON 分頁上方結構化卡片）
+
+- **新增「⚙️ 全域進階設定」卡片**：原本只能靠文字編輯器手改的 7 組全域設定，現在有結構化操作介面（位於 Raw JSON 分頁上方，原始 JSONC 編輯器保留在下方）。
+- **涵蓋設定項**：
+  - `logLevel`（DEBUG / INFO / WARN / ERROR 下拉）
+  - `snapshots`（true/false 下拉・可 /undo 回滾開關）
+  - `shell`（powershell / bash / zsh / cmd / 自訂絕對路徑）
+  - `instructions`（指令檔清單・每行一路徑或 glob）
+  - `attachment.image.*`（auto_resize + max_width / max_height / max_base64_bytes）
+  - `permission.doom_loop`（allow / ask / deny・反死迴圈防護）
+  - `compaction.{auto, tail_turns, prune, reserved}`（自動壓縮策略）
+- **外科式寫入**：只 patch 對應鍵，不動其他設定——`compaction.model/system`、`permission.bash` 規則、provider、agents 等全部原樣保留；清空欄位即移除該鍵。
+- **後端**：`getAdvancedSettings()` / `saveAdvancedSettings()`（agent-plugin-service）+ 新端點 `GET /api/advanced-settings`、`POST /api/save-advanced-settings`。
+- **前端**：`renderAdvancedSettings()` 隨 config 載入回填表單；`saveAdvancedSettings()` 一鍵儲存並重載。
+- **i18n**：17 個新字串 × 4 語言（zh-TW / zh-CN / en-US / ja-JP）。
+
+---
+
 ## [v1.10.0] - 2026-11-16
 
 ### ✨ GitHub Self-Update with Cross-Platform Auto-Restart

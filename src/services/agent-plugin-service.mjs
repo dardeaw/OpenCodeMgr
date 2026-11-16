@@ -17,6 +17,7 @@ import {
 } from '../core/parsers.mjs';
 import {
   updateNodeJsonc,
+  readNodeJsonc,
   readPluginScopes,
   writePluginScopes
 } from './shared-config.mjs';
@@ -265,5 +266,115 @@ export async function saveRawJsonc(nodeId = 'local', content = '') {
     throw new Error('Invalid JSON / JSONC syntax');
   }
   await writeNodeFile(node, cfgFile, content);
+  return { ok: true };
+}
+
+// ============================================================================
+// 7. Global Advanced Settings (logLevel / snapshots / shell / instructions /
+//    attachment.image / permission.doom_loop / compaction policy)
+// ----------------------------------------------------------------------------
+// These are top-level opencode.jsonc keys that previously had NO structured UI
+// (only the raw text editor). This section reads/patches them surgically via
+// updateNodeJsonc so unrelated config is preserved untouched.
+// ============================================================================
+
+/** Read the 7 advanced global settings for display. */
+export async function getAdvancedSettings(nodeId = 'local') {
+  const node = getNode(nodeId);
+  const { parsed } = await readNodeJsonc(node);
+  const comp = (parsed.compaction && typeof parsed.compaction === 'object') ? parsed.compaction : {};
+  const img = (parsed.attachment && parsed.attachment.image && typeof parsed.attachment.image === 'object')
+    ? parsed.attachment.image : {};
+  return {
+    logLevel: parsed.logLevel || '',
+    snapshots: parsed.snapshots === undefined ? null : !!parsed.snapshots,
+    shell: parsed.shell || '',
+    instructions: Array.isArray(parsed.instructions) ? parsed.instructions.slice() : [],
+    attachmentImage: {
+      auto_resize: img.auto_resize === undefined ? null : !!img.auto_resize,
+      max_width: img.max_width ?? null,
+      max_height: img.max_height ?? null,
+      max_base64_bytes: img.max_base64_bytes ?? null
+    },
+    doomLoop: (parsed.permission && typeof parsed.permission === 'object') ? (parsed.permission.doom_loop || '') : '',
+    compactionPolicy: {
+      auto: comp.auto === undefined ? null : !!comp.auto,
+      tail_turns: comp.tail_turns ?? null,
+      prune: comp.prune === undefined ? null : !!comp.prune,
+      reserved: comp.reserved ?? null
+    }
+  };
+}
+
+const LOG_LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+const SHELLS = ['powershell', 'bash', 'zsh', 'cmd'];
+const PERM_MODES = ['allow', 'ask', 'deny'];
+
+function toIntOrNull(v) {
+  if (v === '' || v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+/** Patch only the provided advanced-global keys; leave everything else intact. */
+export async function saveAdvancedSettings(nodeId = 'local', adv = {}) {
+  const node = getNode(nodeId);
+  await updateNodeJsonc(node, (parsed) => {
+    // logLevel
+    if (adv.logLevel !== undefined) {
+      if (LOG_LEVELS.includes(adv.logLevel)) parsed.logLevel = adv.logLevel;
+      else delete parsed.logLevel;
+    }
+    // snapshots
+    if (adv.snapshots !== undefined && adv.snapshots !== null && adv.snapshots !== '') {
+      parsed.snapshots = !!adv.snapshots;
+    }
+    // shell
+    if (adv.shell !== undefined) {
+      const sh = String(adv.shell).trim();
+      if (sh) parsed.shell = sh; else delete parsed.shell;
+    }
+    // instructions (array of paths)
+    if (adv.instructions !== undefined) {
+      const list = Array.isArray(adv.instructions)
+        ? adv.instructions.map(s => String(s).trim()).filter(Boolean)
+        : [];
+      if (list.length) parsed.instructions = list; else delete parsed.instructions;
+    }
+    // attachment.image
+    if (adv.attachmentImage !== undefined) {
+      const ai = adv.attachmentImage || {};
+      const next = {};
+      if (ai.auto_resize !== undefined && ai.auto_resize !== null && ai.auto_resize !== '') next.auto_resize = !!ai.auto_resize;
+      const mw = toIntOrNull(ai.max_width); if (mw !== null) next.max_width = mw;
+      const mh = toIntOrNull(ai.max_height); if (mh !== null) next.max_height = mh;
+      const mb = toIntOrNull(ai.max_base64_bytes); if (mb !== null) next.max_base64_bytes = mb;
+      if (Object.keys(next).length) {
+        parsed.attachment = Object.assign({}, parsed.attachment || {}, { image: next });
+      } else if (parsed.attachment) {
+        delete parsed.attachment.image;
+        if (!Object.keys(parsed.attachment).length) delete parsed.attachment;
+      }
+    }
+    // permission.doom_loop
+    if (adv.doomLoop !== undefined) {
+      if (PERM_MODES.includes(adv.doomLoop)) {
+        parsed.permission = Object.assign({}, parsed.permission || {}, { doom_loop: adv.doomLoop });
+      } else if (parsed.permission) {
+        delete parsed.permission.doom_loop;
+        if (!Object.keys(parsed.permission).length) delete parsed.permission;
+      }
+    }
+    // compaction policy (preserve model/system/disabled etc.)
+    if (adv.compactionPolicy !== undefined) {
+      const cp = adv.compactionPolicy || {};
+      const next = Object.assign({}, (parsed.compaction && typeof parsed.compaction === 'object') ? parsed.compaction : {});
+      if (cp.auto !== undefined && cp.auto !== null && cp.auto !== '') next.auto = !!cp.auto;
+      const tt = toIntOrNull(cp.tail_turns); if (tt !== null) next.tail_turns = tt;
+      if (cp.prune !== undefined && cp.prune !== null && cp.prune !== '') next.prune = !!cp.prune;
+      const rs = toIntOrNull(cp.reserved); if (rs !== null) next.reserved = rs;
+      if (Object.keys(next).length) parsed.compaction = next; else delete parsed.compaction;
+    }
+  });
   return { ok: true };
 }

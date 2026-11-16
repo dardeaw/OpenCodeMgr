@@ -77,6 +77,11 @@ async function reloadAll() {
     // Raw JSONC
     document.getElementById('raw-jsonc-content').value = state.rawJsonc || '';
 
+    // Global Advanced Settings card (populate from parsed config)
+    if (typeof renderAdvancedSettings === 'function') {
+      renderAdvancedSettings();
+    }
+
     showToast(state.name + ' ' + t('syncComplete'));
   } catch (err) {
     alert(t('loadFailed') + err.message);
