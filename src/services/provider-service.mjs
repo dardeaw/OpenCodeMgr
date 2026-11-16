@@ -26,6 +26,11 @@ export async function saveGlobalModels(nodeId = 'local', data = {}) {
     if (!isV2 && data.smallModel !== undefined) parsed.small_model = data.smallModel;
     if (data.titleModel !== undefined) setCoreAgentField(parsed, isV2, 'title', 'model', data.titleModel);
     if (data.compactionModel !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'model', data.compactionModel);
+    // Compaction system prompt + hidden-agent enable/disable toggles
+    // (absorbed from the retired saveCoreAgents endpoint — single writer now).
+    if (data.compactionPrompt !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'system', data.compactionPrompt);
+    if (data.titleEnabled !== undefined) setCoreAgentField(parsed, isV2, 'title', 'enabled', data.titleEnabled);
+    if (data.compactionEnabled !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'enabled', data.compactionEnabled);
   });
   return { ok: true, isV2 };
 }

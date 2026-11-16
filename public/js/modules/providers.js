@@ -851,15 +851,35 @@ async function saveProviderAuthKey() {
   selectProvider(pid);
 }
 
+// Grey out an agent's inputs when its enable switch is off (values preserved).
+function applyCoreAgentFieldStates() {
+  const compOn = document.getElementById('compaction-enabled').checked;
+  document.getElementById('compaction-model').disabled = !compOn;
+  document.getElementById('compaction-prompt').disabled = !compOn;
+  const titleOn = document.getElementById('title-enabled').checked;
+  document.getElementById('global-title-model').disabled = !titleOn;
+}
+
+function onCoreAgentToggle() {
+  applyCoreAgentFieldStates();
+}
+
 async function saveGlobalModelAssignment() {
   showLoading(true);
-  await apiPost('/api/save-global-models', {
+  const isV2 = !!(state && state.isV2);
+  const payload = {
     node: currentNode,
     primaryModel: document.getElementById('global-primary-model').value.trim(),
-    smallModel: document.getElementById('global-small-model').value.trim(),
     titleModel: document.getElementById('global-title-model').value.trim(),
-    compactionModel: document.getElementById('global-compaction-model').value.trim()
-  });
+    compactionModel: document.getElementById('compaction-model').value.trim(),
+    compactionPrompt: document.getElementById('compaction-prompt').value,
+    // Enable switches → written as `disabled` by setCoreAgentField.
+    titleEnabled: document.getElementById('title-enabled').checked,
+    compactionEnabled: document.getElementById('compaction-enabled').checked
+  };
+  // small_model only exists pre-v2 (v2 folds it into the title agent).
+  if (!isV2) payload.smallModel = document.getElementById('global-small-model').value.trim();
+  await apiPost('/api/save-global-models', payload);
   showToast(t('globalModelsSavedMsg'));
   await reloadAll();
 }
@@ -869,21 +889,13 @@ async function quickAssignGlobalModel(fullModelRef, role) {
     document.getElementById('global-primary-model').value = fullModelRef;
   } else if (role === 'small') {
     document.getElementById('global-small-model').value = fullModelRef;
+  } else if (role === 'title') {
+    document.getElementById('global-title-model').value = fullModelRef;
+  } else if (role === 'compaction') {
+    document.getElementById('compaction-model').value = fullModelRef;
   }
   await saveGlobalModelAssignment();
   if (currentProviderId) selectProvider(currentProviderId);
-}
-
-async function saveCoreAgents() {
-  showLoading(true);
-  await apiPost('/api/save-core-agent', {
-    node: currentNode,
-    compactionModel: document.getElementById('compaction-model').value.trim(),
-    compactionPrompt: document.getElementById('compaction-prompt').value.trim(),
-    titleModel: document.getElementById('title-model').value.trim()
-  });
-  showToast(t('coreConfigSaved'));
-  await reloadAll();
 }
 
 // ============================================================================

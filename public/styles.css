@@ -426,6 +426,31 @@
       transform: translateX(17px);
       background-color: #ffffff;
     }
+    /* Global model card sub-blocks (one per agent) */
+    .gsm-block {
+      margin-bottom: 14px;
+    }
+    .gsm-agent {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      background: #090a0d;
+    }
+    .gsm-agent-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .gsm-agent-head label:first-child {
+      margin: 0;
+    }
+    .gsm-block input:disabled,
+    .gsm-block textarea:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
     .item-card {
       background: #090a0d;
       border: 1px solid var(--border);

@@ -7,8 +7,7 @@ import {
   runNodeCmd,
   readNodeFile,
   writeNodeFile,
-  deleteNodeFile,
-  detectNodeOpenCodeVersion
+  deleteNodeFile
 } from '../core/node-transport.mjs';
 import {
   parseJsonc,
@@ -19,8 +18,7 @@ import {
 import {
   updateNodeJsonc,
   readPluginScopes,
-  writePluginScopes,
-  setCoreAgentField
+  writePluginScopes
 } from './shared-config.mjs';
 
 // ============================================================================
@@ -94,21 +92,6 @@ export async function deleteAgent(nodeId = 'local', agentId) {
   const target = `${agentDir}${sep}${agentId}.md`;
   await deleteNodeFile(node, target);
   return { ok: true, id: agentId };
-}
-
-export async function saveCoreAgents(nodeId = 'local', data = {}) {
-  const node = getNode(nodeId);
-  let isV2 = false;
-  try { isV2 = (await detectNodeOpenCodeVersion(node)).isV2; } catch {}
-  await updateNodeJsonc(node, (parsed) => {
-    if (data.compactionModel !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'model', data.compactionModel);
-    if (data.compactionPrompt !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'system', data.compactionPrompt);
-    if (data.titleModel !== undefined) setCoreAgentField(parsed, isV2, 'title', 'model', data.titleModel);
-    // Optional enable/disable toggles for the hidden maintenance agents.
-    if (data.titleEnabled !== undefined) setCoreAgentField(parsed, isV2, 'title', 'enabled', data.titleEnabled);
-    if (data.compactionEnabled !== undefined) setCoreAgentField(parsed, isV2, 'compaction', 'enabled', data.compactionEnabled);
-  });
-  return { ok: true, isV2 };
 }
 
 // ============================================================================

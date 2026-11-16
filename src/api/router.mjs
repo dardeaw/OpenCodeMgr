@@ -203,9 +203,6 @@ export async function handleHttpRequest(req, res) {
         case '/api/delete-agent':
           return sendJson(res, 200, await managerService.deleteAgent(nodeId, data.id));
 
-        case '/api/save-core-agent':
-          return sendJson(res, 200, await managerService.saveCoreAgents(nodeId, data));
-
         // Skills (skills/*/SKILL.md)
         case '/api/save-skill':
           return sendJson(res, 200, await managerService.saveSkill(nodeId, data));

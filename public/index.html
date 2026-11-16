@@ -13,7 +13,7 @@
   <header>
     <div class="logo-area">
       <h1>OpenCode Manager</h1>
-      <span class="badge">v1.8.4</span>
+      <span class="badge">v1.9.0</span>
       
       <!-- Dynamic Node Selector -->
       <div class="node-bar">
@@ -120,54 +120,50 @@
 
     <!-- 0.4 Global Model Assignment Tab -->
     <div id="global-models" class="tab-pane">
-      <!-- Global Active Model Assignment Card (Matches /models in OpenCode) -->
+      <!-- Global Model Assignment (merged: primary + small[v1] + compaction + title) -->
       <div class="card">
         <div class="card-title">
           <span data-i18n="globalActiveModelsTitle">全域預設模型指派</span>
           <button class="btn btn-primary btn-sm" onclick="saveGlobalModelAssignment()" data-i18n="saveGlobalModels">💾 儲存全域模型指派</button>
         </div>
-        <div class="row">
-          <div class="col">
-            <label data-i18n="primaryModelLbl">主要對話模型 (Primary Model - model)</label>
-            <input type="text" id="global-primary-model" list="available-models-datalist" placeholder="provider/model-id (e.g. gufo/gufo-qwen3.8-flash-next)">
-          </div>
-          <div class="col">
-            <label data-i18n="smallModelLbl">輕量輔助模型 (Small Model - small_model)</label>
-            <input type="text" id="global-small-model" list="available-models-datalist" placeholder="provider/model-id">
-          </div>
-        </div>
-        <div class="row" style="margin-bottom: 0;">
-          <div class="col">
-            <label data-i18n="titleModelLbl">對話自動命名模型 (Title Agent - agent.title.model)</label>
-            <input type="text" id="global-title-model" list="available-models-datalist" placeholder="openai/gpt-5.6-luna">
-          </div>
-          <div class="col">
-            <label data-i18n="compactionModelLbl">上下文壓縮模型 (Compaction Agent - agent.compaction.model)</label>
-            <input type="text" id="global-compaction-model" list="available-models-datalist" placeholder="meta/muse-spark-1.3-contributor">
-          </div>
-        </div>
         <datalist id="available-models-datalist"></datalist>
-      </div>
 
-      <!-- Core Agents Config -->
-      <div class="card">
-        <div class="card-title">
-          <span data-i18n="coreConfig">系統內建代理設定</span>
-          <button class="btn btn-primary btn-sm" onclick="saveCoreAgents()" data-i18n="saveCoreConfig">💾 儲存內建代理設定</button>
+        <!-- Primary -->
+        <div class="gsm-block">
+          <label data-i18n="primaryModelLbl">主要對話模型 (model)</label>
+          <input type="text" id="global-primary-model" list="available-models-datalist" placeholder="provider/model-id (e.g. gufo/gufo-qwen3.8-flash-next)">
         </div>
-        <div class="row">
-          <div class="col">
-            <label data-i18n="compactionModel">對話接續壓縮角色 (Compaction Model)</label>
-            <input type="text" id="compaction-model">
-          </div>
-          <div class="col">
-            <label data-i18n="titleModel">對話命名角色 (Title Model)</label>
-            <input type="text" id="title-model">
-          </div>
+
+        <!-- Small model — v1 only (v2 folds it into the title agent) -->
+        <div class="gsm-block" id="gsm-small-block">
+          <label data-i18n="smallModelLbl">輕量輔助模型 (small_model)</label>
+          <input type="text" id="global-small-model" list="available-models-datalist" placeholder="provider/model-id">
         </div>
-        <div>
-          <label data-i18n="compactionPrompt">對話接續壓縮提示詞 (Compaction Prompt)</label>
-          <textarea id="compaction-prompt" style="height: 140px;"></textarea>
+
+        <!-- Compaction (model + system prompt + enable switch) -->
+        <div class="gsm-block gsm-agent">
+          <div class="gsm-agent-head">
+            <label data-i18n="compactionModelLbl">上下文壓縮模型 (agent.compaction.model)</label>
+            <label class="oc-switch" data-i18n-title="enableCompactionAgent">
+              <input type="checkbox" id="compaction-enabled" onchange="onCoreAgentToggle()">
+              <span class="oc-slider"></span>
+            </label>
+          </div>
+          <input type="text" id="compaction-model" list="available-models-datalist" placeholder="meta/muse-spark-1.3-contributor">
+          <label style="margin-top:8px;" data-i18n="compactionPrompt">上下文壓縮系統提示詞</label>
+          <textarea id="compaction-prompt" style="height:140px;"></textarea>
+        </div>
+
+        <!-- Title (model only + enable switch; built-in fixed prompt) -->
+        <div class="gsm-block gsm-agent">
+          <div class="gsm-agent-head">
+            <label data-i18n="titleModelLbl">對話自動命名模型 (agent.title.model)</label>
+            <label class="oc-switch" data-i18n-title="enableTitleAgent">
+              <input type="checkbox" id="title-enabled" onchange="onCoreAgentToggle()">
+              <span class="oc-slider"></span>
+            </label>
+          </div>
+          <input type="text" id="global-title-model" list="available-models-datalist" placeholder="openai/gpt-5.6-luna">
         </div>
       </div>
     </div>

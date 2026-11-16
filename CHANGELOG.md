@@ -4,6 +4,18 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.9.0] - 2026-11-16
+
+### 🎨 Merged Global Model Card + Hidden-Agent Enable Switches
+- **Two cards → one**: the previously separate 「全域預設模型指派」 and 「系統內建代理設定」 cards are merged into a single **per-agent sub-block** card, eliminating the duplicate `title`/`compaction` model inputs that both wrote the same config keys. Each agent (Primary / Small / Compaction / Title) is now one self-contained block.
+- **Clear "built-in" definition**: the built-in maintenance agents are exactly **Compaction** (model + system prompt) and **Title** (model only — its prompt is fixed/built-in). Primary is not disable-able. `build`/`plan`/etc. remain primary roles in the Roles view and never appear here.
+- **Enable/disable switches**: Compaction and Title sub-blocks each get an iOS-style toggle (`disabled` on v2 / `disable` on v1). Turning an agent off greys out its inputs while preserving their values.
+- **Small model is version-gated**: the `small_model` field renders only on pre-v2 nodes; on v2 it is hidden entirely (folded into the title agent's model). Rendering is driven once by `state.isV2` at load / node-switch rather than per-field.
+- **Single backend writer**: the `/api/save-core-agent` endpoint and `saveCoreAgents()` are retired; all global-model + core-agent fields now flow through one `saveGlobalModels()` call to `/api/save-global-models`, removing the two-paths-writing-same-keys drift.
+- **i18n**: new `enableCompactionAgent` / `enableTitleAgent` strings across all four languages, plus a `data-i18n-title` tooltip hook in the i18n engine.
+
+---
+
 ## [v1.8.4] - 2026-11-16
 
 ### ✨ OpenCode v2 Config Compatibility (`agents` / `disabled` / `system`)

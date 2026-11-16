@@ -25,10 +25,8 @@ const FUZZY_MODEL_INPUT_IDS = [
   'global-primary-model',
   'global-small-model',
   'global-title-model',
-  'global-compaction-model',
   'agent-model',
-  'compaction-model',
-  'title-model'
+  'compaction-model'
 ];
 
 // ============================================================================
@@ -101,6 +99,11 @@ function applyDomI18n() {
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const k = el.getAttribute('data-i18n-placeholder');
     if (k) el.placeholder = t(k);
+  });
+
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const k = el.getAttribute('data-i18n-title');
+    if (k) el.title = t(k);
   });
 }
 

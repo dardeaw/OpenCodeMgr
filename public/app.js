@@ -13,23 +13,37 @@ async function reloadAll() {
       document.getElementById('prompt-ssh').value = sp.ssh.content || '';
     }
 
-    // Core Agents — v2 uses the plural `agents` map with renamed fields
-    // (prompt->system); pre-v2 uses singular `agent`. Read native first.
+    // Global Model Assignment — one card, per-agent sub-blocks.
+    // v2 uses the plural `agents` map (prompt->system); pre-v2 uses singular
+    // `agent` plus a top-level small_model. Read native first, then render.
     const cfg = state.config || {};
     const isV2 = !!state.isV2;
     const nativeAgents = (isV2 && cfg.agents && typeof cfg.agents === 'object') ? cfg.agents : null;
     const agentCfg = cfg.agent || {};
     const comp = (nativeAgents && nativeAgents.compaction) || agentCfg.compaction || {};
     const titleAgt = (nativeAgents && nativeAgents.title) || agentCfg.title || {};
+
+    document.getElementById('global-primary-model').value = cfg.model || '';
+
+    // Small model block: v2 folds it into the title agent → hide entirely.
+    const smallBlock = document.getElementById('gsm-small-block');
+    if (smallBlock) smallBlock.style.display = isV2 ? 'none' : '';
+    if (!isV2) {
+      document.getElementById('global-small-model').value = cfg.small_model || '';
+    }
+
+    // Compaction sub-block (model + system prompt + enable switch).
     document.getElementById('compaction-model').value = comp.model || '';
     document.getElementById('compaction-prompt').value = comp.system || comp.prompt || '';
-    document.getElementById('title-model').value = titleAgt.model || '';
+    const compEnabled = comp.disabled !== true;
+    document.getElementById('compaction-enabled').checked = compEnabled;
 
-    // Global Active Models — v2 folds small_model into the title agent's model.
-    document.getElementById('global-primary-model').value = cfg.model || '';
-    document.getElementById('global-small-model').value = isV2 ? (titleAgt.model || '') : (cfg.small_model || '');
+    // Title sub-block (model only + enable switch).
     document.getElementById('global-title-model').value = titleAgt.model || '';
-    document.getElementById('global-compaction-model').value = comp.model || '';
+    const titleEnabled = titleAgt.disabled !== true;
+    document.getElementById('title-enabled').checked = titleEnabled;
+
+    applyCoreAgentFieldStates();
 
     // Render Models/Providers, Agents, Skills, MCP & Plugins
     renderProviders();
