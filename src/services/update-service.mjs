@@ -153,8 +153,7 @@ export async function applyUpdate(targetTag) {
     from: info.current,
     to: newVersion,
     tag,
-    needsRestart: true,
-    message: `Updated to ${tag}. Restart the OpenCode Manager to load the new version.`
+    needsRestart: true
   };
 }
 

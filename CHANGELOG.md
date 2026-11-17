@@ -4,6 +4,14 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.12.1] - 2026-11-17
+
+### 🔧 清理：移除自更新回傳的硬編碼英文訊息
+
+- `applyUpdate()` 成功回傳中移除未被任何前端消费的 `message` 欄位（原本為硬編碼英文 "Updated to ... Restart the OpenCode Manager..."）。前端一律使用 `from`/`to` 版本號搭配自身 i18n 字串顯示，故不影響任何語系的更新介面。
+
+---
+
 ## [v1.12.0] - 2026-11-17
 
 ### ✨ 設定項 hover 說明（語系感知工具提示）
