@@ -104,6 +104,7 @@ async function initApp() {
   await reloadAll();
   testNodeHealth(currentNode);
   checkForUpdateBanner();
+  checkCalibrationBanner();
 }
 
 initApp();

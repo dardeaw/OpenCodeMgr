@@ -319,6 +319,24 @@ export const MCP_TOOLS = [
       },
       required: ['sourceNode', 'targetNodes']
     }
+  },
+  {
+    name: 'opencodemgr_upgrade_report',
+    description: 'Show the last first-launch upgrade calibration report (per-node plugin/MCP audit, auto-migrations applied, items needing attention).',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'opencodemgr_recalibrate',
+    description: 'Force a full upgrade calibration now: audit every reachable node and auto-migrate dead settings (e.g. legacy MCP disable flags on v2 nodes). Never deletes user files.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
   }
 ];
 
@@ -464,6 +482,12 @@ export async function executeMcpTool(name, args = {}) {
         smartPathTranslate: args.smartPathTranslate,
         preserveBaseUrls: args.preserveBaseUrls
       });
+
+    case 'opencodemgr_upgrade_report':
+      return await managerService.getCalibrationReport();
+
+    case 'opencodemgr_recalibrate':
+      return await managerService.runCalibration({ force: true });
 
     default:
       throw new Error(`Unknown MCP tool: ${name}`);

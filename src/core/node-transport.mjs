@@ -79,7 +79,13 @@ export function expandHome(p) {
 }
 
 export function getNodePaths(node) {
-  const isWindows = node.type === 'local' || String(node.configDir || '').includes('\\');
+  // v1.14.0: a local node inherits the MANAGER host OS (the manager itself
+  // may run on Linux/macOS/Windows); only remote nodes are inferred from the
+  // configDir spelling. The old `node.type === 'local' || ...` test forced
+  // every local node to Windows semantics and broke Linux-hosted managers.
+  const isWindows = node.type === 'local'
+    ? process.platform === 'win32'
+    : String(node.configDir || '').includes('\\');
   const sep = isWindows ? '\\' : '/';
   const configDir = expandHome(node.configDir).replace(/[\\/]+$/, '');
   return {
@@ -145,6 +151,16 @@ export async function downloadFromNode(node, remotePath, localPath) {
 }
 
 /**
+ * True when shell commands for this node must use Windows (cmd.exe) syntax:
+ * a local node follows the manager host OS, a remote node follows its
+ * configDir spelling. Central helper so every remote branch stays in sync.
+ */
+export function isWindowsNode(node) {
+  if (!node || node.type === 'local') return process.platform === 'win32';
+  return String(node.configDir || '').includes('\\');
+}
+
+/**
  * Backup file on node with .bak-TIMESTAMP suffix at the end so it never matches *.md or *.js globs
  */
 export async function backupNodeFile(node, filePath) {
@@ -152,6 +168,9 @@ export async function backupNodeFile(node, filePath) {
     if (!fs.existsSync(filePath)) return;
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     fs.copyFileSync(filePath, `${filePath}.bak-${ts}`);
+  } else if (isWindowsNode(node)) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    await runNodeCmd(node, `if exist "${filePath}" copy /Y "${filePath}" "${filePath}.bak-${ts}"`);
   } else {
     const cmd = `[ -f "${filePath}" ] && cp "${filePath}" "${filePath}.bak-$(date +%Y%m%d-%H%M%S)" || true`;
     await runNodeCmd(node, cmd);
@@ -161,6 +180,9 @@ export async function backupNodeFile(node, filePath) {
 export async function readNodeFile(node, targetPath) {
   if (node.type === 'local') {
     return fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf-8') : '';
+  }
+  if (isWindowsNode(node)) {
+    return await runNodeCmd(node, `if exist "${targetPath}" (type "${targetPath}")`);
   }
   return await runNodeCmd(node, `cat "${targetPath}" 2>/dev/null || true`);
 }
@@ -190,6 +212,8 @@ export async function deleteNodeFile(node, targetPath, doBackup = true) {
   }
   if (node.type === 'local') {
     if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+  } else if (isWindowsNode(node)) {
+    await runNodeCmd(node, `if exist "${targetPath}" del /F "${targetPath}"`);
   } else {
     await runNodeCmd(node, `rm -f "${targetPath}"`);
   }
@@ -201,6 +225,10 @@ export async function deleteNodeFile(node, targetPath, doBackup = true) {
 export async function nodeFileExists(node, targetPath) {
   if (node.type === 'local') {
     return fs.existsSync(targetPath);
+  }
+  if (isWindowsNode(node)) {
+    const out = await runNodeCmd(node, `if exist "${targetPath}" (echo YES) else (echo NO)`);
+    return String(out || '').trim().endsWith('YES');
   }
   const out = await runNodeCmd(node, `test -f "${targetPath}" && echo YES || echo NO`);
   return String(out || '').trim().endsWith('YES');
@@ -217,8 +245,25 @@ export async function renameNodeFile(node, oldPath, newPath) {
     fs.renameSync(oldPath, newPath);
     return true;
   }
+  if (isWindowsNode(node)) {
+    await runNodeCmd(node, `move /Y "${oldPath}" "${newPath}"`);
+    return true;
+  }
   await runNodeCmd(node, `mv -f "${oldPath}" "${newPath}"`);
   return true;
+}
+
+/**
+ * Create a directory (including parents) on a node.
+ */
+export async function ensureNodeDir(node, dirPath) {
+  if (node.type === 'local') {
+    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+  } else if (isWindowsNode(node)) {
+    await runNodeCmd(node, `if not exist "${dirPath}" mkdir "${dirPath}"`);
+  } else {
+    await runNodeCmd(node, `mkdir -p "${dirPath}"`);
+  }
 }
 
 export async function runDbHelperOnNode(node, args) {
@@ -280,7 +325,7 @@ function opencodeBinaryCandidates() {
   return out;
 }
 
-async function localOpenCodeVersion() {
+export async function localOpenCodeVersion() {
   // 1. PATH lookup (works when the manager's env is healthy).
   try {
     const { stdout } = await execAsync('opencode --version', { timeout: 5000 });

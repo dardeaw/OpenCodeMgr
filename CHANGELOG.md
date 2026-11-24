@@ -4,6 +4,18 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.14.0] - 2026-11-24
+
+### 🛠️ 升級自動校正＋跨平台地基
+
+- **升版後首次啟動自動校正**：開機比對版號戳記（`.mgr-calibration.json`），新版第一次啟動自動稽核所有可連線節點：插件 active／`.disabled` 並存衝突、懸空名單只報告不動檔；v2 節點上會被忽略的舊式 `mcp.<id>.enabled:false`／`disabled:true` 自動搬成原生 `mcp.servers.<id>.disabled`（經 `updateNodeJsonc` 自動備份）。失敗不留戳，下次重試。
+- **校正不怕慢節點**：各節點平行校正＋單節點 120 秒超時（逾時／離線記為略過不誤報），開機完全非同步不擋服務。
+- **結果看得到**：`GET /api/upgrade-report` 首頁 banner（`calibBannerIssues` 四語系、已讀後不再打擾），`POST /api/recalibrate` 可手動重跑；MCP 另有 `opencodemgr_upgrade_report`／`opencodemgr_recalibrate` 工具。
+- **跨平台修正**：本機路徑改跟 manager 主機 OS（`process.platform`），Linux 主機不再被誤判 Windows；遠端依節點分流 win（cmd.exe）／unix 指令（exists／rename／read／write／delete／backup／plugin 列表），Windows 遠端節點不再全滅。
+- **版本偵測不再依賴 PATH（v1.13.1 熱修併入）**：常駐／respawn 行程 PATH 過期時改試 npm 全域、`~/.opencode/bin` 等絕對路徑，測不到才回退預設。
+
+---
+
 ## [v1.13.1] - 2026-11-24
 
 ### 🛠️ 版本偵測不再依賴 PATH

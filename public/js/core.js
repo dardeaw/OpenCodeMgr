@@ -278,6 +278,47 @@ function closeUpdateModalDirect() {
   if (modal) modal.style.display = 'none';
 }
 
+// ============================================================================
+// 4c. Upgrade Calibration Banner (first launch per manager version)
+// ============================================================================
+
+async function checkCalibrationBanner() {
+  try {
+    const rep = await apiGet('/api/upgrade-report');
+    if (!rep || !rep.report || !rep.report.nodes) return;
+    const key = 'mgr_calib_seen_' + rep.version + '_' + (rep.ranAt || '');
+    if (localStorage.getItem(key)) return;
+    let twins = 0, migrated = 0, errors = 0;
+    for (const n of Object.values(rep.report.nodes)) {
+      if (!n || n.skipped) continue;
+      if ((n.error || n.ok === false) && !n.skipped) { errors++; continue; }
+      twins += (n.plugins && Array.isArray(n.plugins.twins)) ? n.plugins.twins.length : 0;
+      migrated += (n.mcp && Array.isArray(n.mcp.migrated) ? n.mcp.migrated.length : 0) +
+        (n.mcp && Array.isArray(n.mcp.conflicts) ? n.mcp.conflicts.length : 0);
+    }
+    if (twins === 0 && migrated === 0 && errors === 0) return;
+    let bar = document.getElementById('calib-banner');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'calib-banner';
+      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:8px 16px;background:rgba(245,158,11,.13);border-bottom:1px solid rgba(245,158,11,.5);color:#fcd34d;font-size:13px;display:flex;gap:12px;align-items:center;justify-content:center;';
+      document.body.prepend(bar);
+    }
+    bar.innerHTML = '';
+    const span = document.createElement('span');
+    span.textContent = t('calibBannerIssues', { twins, migrated, errors });
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.className = 'btn btn-sm';
+    btn.onclick = () => { try { localStorage.setItem(key, '1'); } catch {} bar.remove(); };
+    bar.appendChild(span);
+    bar.appendChild(btn);
+    bar.style.display = 'flex';
+  } catch {
+    // silently ignore — calibration banner must never break the app
+  }
+}
+
 function renderUpdateModal(info) {
   const status = document.getElementById('update-status');
   const actBox = document.getElementById('update-actions');

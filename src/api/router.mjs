@@ -148,6 +148,9 @@ export async function handleHttpRequest(req, res) {
         case '/api/check-update':
           return sendJson(res, 200, await managerService.checkForUpdate());
 
+        case '/api/upgrade-report':
+          return sendJson(res, 200, await managerService.getCalibrationReport());
+
         default:
           return sendJson(res, 404, { error: `Unknown GET endpoint: ${pathname}` });
       }
@@ -288,6 +291,9 @@ export async function handleHttpRequest(req, res) {
           }
           return sendJson(res, r.ok ? 200 : 500, r);
         }
+
+        case '/api/recalibrate':
+          return sendJson(res, 200, await managerService.runCalibration({ force: true }));
 
         default:
           return sendJson(res, 404, { error: `Unknown POST endpoint: ${pathname}` });

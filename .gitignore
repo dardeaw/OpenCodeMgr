@@ -4,6 +4,7 @@ nodes.json
 # Logs and runtime artifacts
 *.log
 out.log
+.mgr-calibration.json
 
 # Operating system / build artifacts
 *.exe

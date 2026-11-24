@@ -171,13 +171,21 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
   const stripDisabledSuffix = (fn) => fn.endsWith('.disabled') ? fn.slice(0, -'.disabled'.length) : fn;
   const isDisabledFile = (fn) => fn.endsWith('.disabled');
   const pluginList = [];
-  // canonical name -> { fullPath, disabledVariant }; an active *.js twin
-  // always wins over a stale *.js.disabled twin when both exist.
+  // canonical name -> { fullPath, disabledVariant, twin }; an active *.js
+  // twin always wins over a stale *.js.disabled twin when both exist (twin
+  // flags the ambiguity for the upgrade calibration report).
   const seenPlugin = new Map();
   const notePluginFile = (canonical, fullPath, disabledVariant) => {
     const prev = seenPlugin.get(canonical);
-    if (!prev || (prev.disabledVariant && !disabledVariant)) {
-      seenPlugin.set(canonical, { fullPath, disabledVariant });
+    if (!prev) {
+      seenPlugin.set(canonical, { fullPath, disabledVariant, twin: false });
+    } else if (prev.disabledVariant !== disabledVariant) {
+      // Both variants exist: keep the active file for content, flag the twin.
+      if (!disabledVariant) {
+        seenPlugin.set(canonical, { fullPath, disabledVariant, twin: true });
+      } else {
+        prev.twin = true;
+      }
     }
   };
   const pluginDirs = [pluginDir, paths.pluginDirAlt].filter(Boolean);
@@ -189,6 +197,20 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
         if (!(f.endsWith('.js') || f.endsWith('.mjs') || f.endsWith('.disabled'))) continue;
         notePluginFile(stripDisabledSuffix(f), path.join(dir, f), isDisabledFile(f));
       }
+    }
+  } else if (node.type !== 'local' && paths.isWindows) {
+    // Windows remote over ssh (cmd.exe): list candidates, filter by
+    // extension in JS since `dir` also reports its own "File Not Found".
+    const lsCmds = pluginDirs.map(d => `dir /b "${d}\\*.js" "${d}\\*.mjs" "${d}\\*.disabled" 2>nul`).join(' & ');
+    const lsP = await runNodeCmd(node, lsCmds);
+    for (const fp of lsP.split(/\r?\n/).map(s => s.trim()).filter(Boolean)) {
+      if (!fp.endsWith('.js') && !fp.endsWith('.mjs') && !fp.endsWith('.disabled')) continue;
+      const fn = fp.split('\\').pop().split('/').pop();
+      if (fn === '_mgr_scope.js' || fn.includes('.bak')) continue;
+      // dir /b prints bare names: re-anchor under the scanned dir.
+      const dir = pluginDirs.find(d => fp.toLowerCase().includes(d.toLowerCase())) || pluginDirs[0];
+      const full = fp.includes(':') || fp.startsWith('\\\\') ? fp : `${dir}${paths.sep}${fn}`;
+      notePluginFile(stripDisabledSuffix(fn), full, isDisabledFile(fn));
     }
   } else {
     const lsCmds = pluginDirs.map(d => `ls -1 "${d}"/*.js "${d}"/*.mjs "${d}"/*.disabled 2>/dev/null || true`).join('; ');
@@ -215,6 +237,7 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
       enabled,
       listed,
       disabledFile: pf.disabledVariant,
+      twin: !!pf.twin,
       order: listed ? enabledIdx : 999,
       scope: scopeObj,
       description: cleanCode ? extractPluginSummary(cleanCode, canonical) : '',

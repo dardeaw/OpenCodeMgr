@@ -1,6 +1,7 @@
 // server.mjs — Lightweight HTTP Server Entry Point for OpenCode Manager
 import http from 'node:http';
 import { handleHttpRequest } from './src/api/router.mjs';
+import { maybeRunStartupCalibration } from './src/services/calibration-service.mjs';
 
 export const PORT = Number(process.env.OPENCODE_MGR_PORT || 5210);
 
@@ -21,6 +22,9 @@ export function startServer(port = PORT) {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', () => {
       console.log(`[OpenCode Manager] Server active on http://127.0.0.1:${port}`);
+      // First-launch-per-version upgrade calibration (non-blocking, never
+      // throws): audits nodes and migrates dead settings. Safe to be slow.
+      maybeRunStartupCalibration().catch(() => {});
       resolve(server);
     });
   });

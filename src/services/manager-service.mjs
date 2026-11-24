@@ -8,3 +8,4 @@ export * from './agent-plugin-service.mjs';
 export * from './skill-service.mjs';
 export * from './clone-service.mjs';
 export * from './update-service.mjs';
+export * from './calibration-service.mjs';

@@ -10,6 +10,7 @@ import {
   deleteNodeFile,
   renameNodeFile,
   nodeFileExists,
+  ensureNodeDir,
   detectNodeOpenCodeVersion
 } from '../core/node-transport.mjs';
 import {
@@ -260,9 +261,7 @@ export async function savePlugin(nodeId = 'local', data = {}) {
   const node = getNode(nodeId);
   const { sep, pluginDir } = getNodePaths(node);
 
-  if (node.type !== 'local') {
-    await runNodeCmd(node, `mkdir -p "${pluginDir}"`);
-  }
+  await ensureNodeDir(node, pluginDir);
 
   const scopes = await readPluginScopes(node);
   const scopeRule = data.scope || { mode: 'all', agents: [] };
