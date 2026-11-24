@@ -4,6 +4,14 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.14.1] - 2026-11-24
+
+### 🛠️ 版本偵測加持久快取
+
+- 實測發現：經 API respawn 重啟的管理器行程可能帶著過期 PATH，連 `opencode --version` 都叫不到，導致本機被誤判 v1（插件顯示、MCP 寫入形狀跟著錯）。現在偵測成功會寫入 `.mgr-node-versions.json`，測不到時用快取頂上（`source: live/cached/fallback` 可稽），真的沒歷史才回退預設。
+
+---
+
 ## [v1.14.0] - 2026-11-24
 
 ### 🛠️ 升級自動校正＋跨平台地基

@@ -342,20 +342,54 @@ export async function localOpenCodeVersion() {
   return '';
 }
 /**
- * Detect OpenCode version running on a node and return compatibility flags
+ * Persistent per-node version cache. A stale-but-real version beats the
+ * blind 1.19.4 fallback when live detection fails (e.g. manager process
+ * with a stale PATH that can no longer spawn `opencode`).
+ */
+const NODE_VERSION_CACHE_FILE = path.join(MANAGER_ROOT_DIR, '.mgr-node-versions.json');
+
+function readVersionCache() {
+  try {
+    if (!fs.existsSync(NODE_VERSION_CACHE_FILE)) return {};
+    return JSON.parse(fs.readFileSync(NODE_VERSION_CACHE_FILE, 'utf-8')) || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeVersionCacheEntry(nodeId, version) {
+  try {
+    const all = readVersionCache();
+    all[nodeId || 'local'] = { version, isV2: isOpenCodeV2(version), at: new Date().toISOString() };
+    fs.writeFileSync(NODE_VERSION_CACHE_FILE, JSON.stringify(all, null, 2) + '\n', 'utf-8');
+  } catch {}
+}
+
+/**
+ * Detect OpenCode version running on a node and return compatibility flags.
+ * `source` is 'live', 'cached', or 'fallback' for diagnosability.
  */
 export async function detectNodeOpenCodeVersion(node) {
+  const nodeId = (node && node.id) || 'local';
   try {
     if (node.type === 'local') {
       const probed = await localOpenCodeVersion();
-      const ver = probed || '1.19.4';
-      return { version: ver, isV2: isOpenCodeV2(ver), v2Ready: true };
+      if (probed) {
+        writeVersionCacheEntry(nodeId, probed);
+        return { version: probed, isV2: isOpenCodeV2(probed), v2Ready: true, source: 'live' };
+      }
     } else {
       const out = await runNodeCmd(node, 'opencode --version 2>/dev/null || ~/.opencode/bin/opencode --version 2>/dev/null || echo "1.19.4"');
       const ver = (out || '').trim().split(/\r?\n/).pop().trim() || '1.19.4';
-      return { version: ver, isV2: isOpenCodeV2(ver), v2Ready: true };
+      if (ver && ver !== '1.19.4') {
+        writeVersionCacheEntry(nodeId, ver);
+        return { version: ver, isV2: isOpenCodeV2(ver), v2Ready: true, source: 'live' };
+      }
     }
-  } catch (err) {
-    return { version: '1.19.4', isV2: false, v2Ready: true };
+  } catch {}
+  const cached = readVersionCache()[nodeId];
+  if (cached && cached.version) {
+    return { version: cached.version, isV2: !!cached.isV2, v2Ready: true, source: 'cached' };
   }
+  return { version: '1.19.4', isV2: false, v2Ready: true, source: 'fallback' };
 }
