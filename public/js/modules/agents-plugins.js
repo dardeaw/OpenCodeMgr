@@ -209,8 +209,8 @@ function renderPlugins() {
     }
 
     const statusBadge = p.enabled
-      ? '<span class="badge" style="background:rgba(16,185,129,0.2);color:#10b981;">' + escapeHtml(t('pluginEnabledBadge')) + ' #' + (p.order + 1) + '</span>'
-      : '<span class="badge" style="color:var(--text-muted);">' + escapeHtml(t('pluginDisabledBadge')) + '</span>';
+      ? '<span class="badge" style="background:rgba(16,185,129,0.2);color:#10b981;">' + escapeHtml(t('pluginEnabledBadge')) + (p.listed && p.order < 999 ? ' #' + (p.order + 1) : '') + '</span>'
+      : '<span class="badge" style="color:var(--text-muted);">' + escapeHtml(t('pluginDisabledBadge')) + (p.disabledFile ? ' (file)' : '') + '</span>';
 
     const div = document.createElement('div');
     div.className = 'item-card' + (currentPluginFilename === p.filename ? ' selected' : '');
@@ -218,7 +218,7 @@ function renderPlugins() {
     div.onclick = () => selectPlugin(p.filename);
 
     const toggleBtnText = p.enabled ? t('pluginBtnDisable') : t('pluginBtnEnable');
-    const orderBtns = p.enabled
+    const orderBtns = (p.enabled && p.listed)
       ? '<button class="btn btn-sm" style="padding:2px 6px;font-size:11px;" data-fn="' + escapeHtml(p.filename) + '" onclick="event.stopPropagation();movePluginOrder(this.dataset.fn, -1)">↑</button>' +
         '<button class="btn btn-sm" style="padding:2px 6px;font-size:11px;" data-fn="' + escapeHtml(p.filename) + '" onclick="event.stopPropagation();movePluginOrder(this.dataset.fn, 1)">↓</button>'
       : '';
@@ -342,7 +342,7 @@ async function saveCurrentPlugin() {
     content
   });
   currentPluginFilename = filename;
-  showToast(t('pluginSavedMsg'));
+  showToast(t('pluginSavedMsg') + ' · ' + t('needRestartHint'));
   await reloadAll();
   selectPlugin(filename);
 }
@@ -350,7 +350,7 @@ async function saveCurrentPlugin() {
 async function togglePluginQuick(filename, enabled) {
   showLoading(true);
   await apiPost('/api/toggle-plugin', { node: currentNode, filename, enabled });
-  showToast(filename + ' ' + (enabled ? t('pluginEnabledBadge') : t('pluginDisabledBadge')));
+  showToast(filename + ' ' + (enabled ? t('pluginEnabledBadge') : t('pluginDisabledBadge')) + ' · ' + t('needRestartHint'));
   await reloadAll();
   if (currentPluginFilename === filename) selectPlugin(filename);
 }
@@ -380,17 +380,29 @@ function renderMcp() {
   const list = document.getElementById('mcp-list');
   if (!list) return;
   list.innerHTML = '';
-  const mcpMap = (state.config && state.config.mcp) || {};
+  // Merge legacy flat `mcp.<id>` entries and native v2 `mcp.servers.<id>`
+  // entries; skip the `servers` container itself and the `timeout` config.
+  const mcpCfg = (state.config && state.config.mcp) || {};
+  const mcpMap = {};
+  for (const [id, m] of Object.entries(mcpCfg)) {
+    if (id === 'servers' || id === 'timeout') continue;
+    if (m && typeof m === 'object') mcpMap[id] = { ...m, _native: false };
+  }
+  const servers = (mcpCfg.servers && typeof mcpCfg.servers === 'object') ? mcpCfg.servers : {};
+  for (const [id, m] of Object.entries(servers)) {
+    if (m && typeof m === 'object') mcpMap[id] = { ...m, _native: true };
+  }
+  const isOn = (m) => m.enabled !== false && !m.disabled;
   for (const [id, m] of Object.entries(mcpMap)) {
     const div = document.createElement('div');
     div.className = 'item-card' + (currentMcpId === id ? ' selected' : '');
     div.onclick = () => selectMcp(id, m);
-    const cmd = Array.isArray(m.command) ? m.command.join(' ') : (m.command || '');
+    const cmd = Array.isArray(m.command) ? m.command.join(' ') : (m.command || m.url || '');
     div.innerHTML = `
       <div class="item-header">
         <span class="item-name">${escapeHtml(id)}</span>
-        <span class="badge" style="color: ${m.enabled !== false ? 'var(--primary)' : 'var(--danger)'}">
-          ${m.enabled !== false ? escapeHtml(t('statusEnabled')) : escapeHtml(t('statusDisabled'))}
+        <span class="badge" style="color: ${isOn(m) ? 'var(--primary)' : 'var(--danger)'}">
+          ${isOn(m) ? escapeHtml(t('statusEnabled')) : escapeHtml(t('statusDisabled'))}
         </span>
       </div>
       <div class="item-desc">${escapeHtml(cmd)}</div>
@@ -411,7 +423,7 @@ function selectMcp(id, m) {
   document.getElementById('mcp-id').value = id;
   document.getElementById('mcp-id').disabled = true;
   document.getElementById('mcp-type').value = m.type || 'local';
-  document.getElementById('mcp-enabled').value = m.enabled !== false ? 'true' : 'false';
+  document.getElementById('mcp-enabled').value = (m.enabled !== false && !m.disabled) ? 'true' : 'false';
   document.getElementById('mcp-timeout').value = m.timeout || '';
 
   if (Array.isArray(m.command)) {
@@ -454,7 +466,7 @@ async function saveCurrentMcp() {
     enabled: document.getElementById('mcp-enabled').value === 'true',
     timeout: parseInt(document.getElementById('mcp-timeout').value, 10) || undefined
   });
-  showToast(t('mcpSaved'));
+  showToast(t('mcpSaved') + ' · ' + t('needRestartHint'));
   await reloadAll();
 }
 

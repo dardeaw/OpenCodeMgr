@@ -194,6 +194,32 @@ export async function deleteNodeFile(node, targetPath, doBackup = true) {
   }
 }
 
+/**
+ * Check whether a single file exists on a node.
+ */
+export async function nodeFileExists(node, targetPath) {
+  if (node.type === 'local') {
+    return fs.existsSync(targetPath);
+  }
+  const out = await runNodeCmd(node, `test -f "${targetPath}" && echo YES || echo NO`);
+  return String(out || '').trim().endsWith('YES');
+}
+
+/**
+ * Rename a file on a node (used for file-level plugin enable/disable:
+ * `<name>.js` <-> `<name>.js.disabled`). opencode only loads `*.js`/`*.mjs`,
+ * so the `.disabled` suffix unloads the plugin after an opencode restart.
+ */
+export async function renameNodeFile(node, oldPath, newPath) {
+  if (node.type === 'local') {
+    if (!fs.existsSync(oldPath)) return false;
+    fs.renameSync(oldPath, newPath);
+    return true;
+  }
+  await runNodeCmd(node, `mv -f "${oldPath}" "${newPath}"`);
+  return true;
+}
+
 export async function runDbHelperOnNode(node, args) {
   const { sep, configDir } = getNodePaths(node);
   const remoteHelper = `${configDir}${sep}db_helper.py`;

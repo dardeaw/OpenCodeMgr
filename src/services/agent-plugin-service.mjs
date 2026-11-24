@@ -7,7 +7,10 @@ import {
   runNodeCmd,
   readNodeFile,
   writeNodeFile,
-  deleteNodeFile
+  deleteNodeFile,
+  renameNodeFile,
+  nodeFileExists,
+  detectNodeOpenCodeVersion
 } from '../core/node-transport.mjs';
 import {
   parseJsonc,
@@ -99,22 +102,47 @@ export async function deleteAgent(nodeId = 'local', agentId) {
 // 3. MCP Servers
 // ============================================================================
 
+// ============================================================================
+// 3. MCP Servers
+// ============================================================================
+// NOTE (v1.13.0 audit): opencode v2 ignores the legacy `enabled` flag on flat
+// `mcp.<id>` entries entirely (verified on v2.1.4: `enabled:false` still shows
+// "connected" in `opencode mcp list`). v2 requires the native shape
+// `mcp.servers.<id>.disabled`. This writer is version-aware: v1 keeps the
+// legacy flat shape, v2 writes the native shape and drops the legacy twin so
+// both shapes never coexist for the same server id.
+
 export async function saveMcpServer(nodeId = 'local', data = {}) {
   if (!data.id) throw new Error('Missing MCP server id');
   const node = getNode(nodeId);
+  let isV2 = false;
+  try { isV2 = (await detectNodeOpenCodeVersion(node)).isV2; } catch {}
   await updateNodeJsonc(node, (parsed) => {
-    if (!parsed.mcp) parsed.mcp = {};
-    const entry = {
-      type: data.type || 'local',
-      command: data.command,
-      enabled: data.enabled !== false
-    };
-    if (data.timeout) entry.timeout = data.timeout;
-    if (data.url) entry.url = data.url;
-    if (data.environment) entry.environment = data.environment;
-    parsed.mcp[data.id] = entry;
+    if (!parsed.mcp || typeof parsed.mcp !== 'object') parsed.mcp = {};
+    if (isV2) {
+      if (!parsed.mcp.servers || typeof parsed.mcp.servers !== 'object') parsed.mcp.servers = {};
+      const { node: _node, id: _id, action: _action, enabled, ...rest } = data;
+      const entry = { ...rest };
+      if (entry.enabled !== undefined) delete entry.enabled;
+      if (entry.disabled === undefined) entry.disabled = enabled === false;
+      if (!entry.type) entry.type = 'local';
+      parsed.mcp.servers[data.id] = entry;
+      if (parsed.mcp[data.id] && typeof parsed.mcp[data.id] === 'object') {
+        delete parsed.mcp[data.id];
+      }
+    } else {
+      const entry = {
+        type: data.type || 'local',
+        command: data.command,
+        enabled: data.enabled !== false
+      };
+      if (data.timeout) entry.timeout = data.timeout;
+      if (data.url) entry.url = data.url;
+      if (data.environment) entry.environment = data.environment;
+      parsed.mcp[data.id] = entry;
+    }
   });
-  return { ok: true, id: data.id };
+  return { ok: true, id: data.id, isV2, needRestart: true };
 }
 
 export async function deleteMcpServer(nodeId = 'local', mcpId) {
@@ -124,22 +152,113 @@ export async function deleteMcpServer(nodeId = 'local', mcpId) {
     if (parsed.mcp && parsed.mcp[mcpId]) {
       delete parsed.mcp[mcpId];
     }
+    if (parsed.mcp && parsed.mcp.servers && parsed.mcp.servers[mcpId]) {
+      delete parsed.mcp.servers[mcpId];
+    }
   });
-  return { ok: true, id: mcpId };
+  return { ok: true, id: mcpId, needRestart: true };
 }
 
 // ============================================================================
 // 4. Plugins & Per-Agent Scope
 // ============================================================================
+// NOTE (v1.13.0 audit): merely removing a plugin from the `plugin` array in
+// opencode.jsonc does NOT unload it. Verified on opencode v2.1.4: every
+// `*.js`/`*.mjs` under `plugin/` (and `plugins/`) is loaded at opencode
+// startup regardless of list membership (an unlisted ps-guard.js kept
+// intercepting tool calls in a session started after its removal), and new
+// files are not hot-loaded. Real disable therefore = rename the file to
+// `<name>.js.disabled` (opencode only loads *.js/*.mjs) + restart opencode.
+// The `plugin` array is kept in sync as load ORDER metadata only.
+
+// Suffix that unloads a plugin file: opencode only loads *.js / *.mjs.
+export const DISABLED_SUFFIX = '.disabled';
+
+function canonicalPluginName(filename) {
+  let fn = String(filename || '').split('/').pop().split('\\').pop().trim();
+  if (fn.endsWith(DISABLED_SUFFIX)) fn = fn.slice(0, -DISABLED_SUFFIX.length);
+  return fn;
+}
+
+function pluginListRef(filename) {
+  return `./plugin/${filename}`;
+}
+
+function syncPluginListRef(parsed, filename, enabled) {
+  if (!Array.isArray(parsed.plugin)) parsed.plugin = [];
+  const idx = parsed.plugin.findIndex(p => String(p).split('/').pop().split('\\').pop() === filename);
+  if (enabled && idx === -1) {
+    parsed.plugin.push(pluginListRef(filename));
+  } else if (!enabled && idx !== -1) {
+    parsed.plugin.splice(idx, 1);
+  }
+}
+
+/**
+ * Locate a plugin's live files on a node. Returns canonical filename, the
+ * directory holding it, and which variants exist.
+ */
+async function resolvePluginFiles(node, filename) {
+  const canonical = canonicalPluginName(filename);
+  if (!canonical) throw new Error('Missing plugin filename');
+  const { sep, pluginDir, pluginDirAlt } = getNodePaths(node);
+  const dirs = [pluginDir];
+  if (pluginDirAlt && pluginDirAlt !== pluginDir) dirs.push(pluginDirAlt);
+  let dir = pluginDir;
+  let activeExists = false;
+  let disabledExists = false;
+  for (const d of dirs) {
+    const a = `${d}${sep}${canonical}`;
+    const x = `${a}${DISABLED_SUFFIX}`;
+    const [hasA, hasX] = await Promise.all([nodeFileExists(node, a), nodeFileExists(node, x)]);
+    if (hasA || hasX) {
+      dir = d;
+      activeExists = hasA;
+      disabledExists = hasX;
+      break;
+    }
+  }
+  return {
+    canonical,
+    dir,
+    sep,
+    activePath: `${dir}${sep}${canonical}`,
+    disabledPath: `${dir}${sep}${canonical}${DISABLED_SUFFIX}`,
+    activeExists,
+    disabledExists
+  };
+}
+
+/**
+ * Single writer for file-level enable/disable. Enable: rename
+ * `<name>.js.disabled` back to `<name>.js`. Disable: rename `<name>.js` to
+ * `<name>.js.disabled`. The jsonc `plugin` array is synced as order metadata.
+ * Takes effect after an opencode restart (plugins load at startup).
+ */
+async function setPluginEnabled(node, canonical, enabled) {
+  const r = await resolvePluginFiles(node, canonical);
+  if (enabled) {
+    if (r.disabledExists) {
+      await renameNodeFile(node, r.disabledPath, r.activePath);
+    }
+  } else {
+    if (r.activeExists) {
+      await renameNodeFile(node, r.activePath, r.disabledPath);
+    }
+  }
+  await updateNodeJsonc(node, (parsed) => {
+    syncPluginListRef(parsed, r.canonical, enabled);
+  });
+  return r;
+}
 
 export async function savePlugin(nodeId = 'local', data = {}) {
-  let filename = String(data.filename || '').trim();
+  let filename = canonicalPluginName(data.filename);
   if (!filename) throw new Error('Missing plugin filename');
   if (!filename.endsWith('.js') && !filename.endsWith('.mjs')) filename += '.js';
 
   const node = getNode(nodeId);
   const { sep, pluginDir } = getNodePaths(node);
-  const fullPluginPath = `${pluginDir}${sep}${filename}`;
 
   if (node.type !== 'local') {
     await runNodeCmd(node, `mkdir -p "${pluginDir}"`);
@@ -154,53 +273,44 @@ export async function savePlugin(nodeId = 'local', data = {}) {
   }
   await writePluginScopes(node, scopes);
 
+  const enabled = data.enabled !== false;
+  const r = await resolvePluginFiles(node, filename);
+  // Target path follows the enabled flag: disabled content lives in the
+  // `.disabled` file so a save can never silently re-activate a plugin.
+  const targetPath = enabled ? r.activePath : r.disabledPath;
   if (data.content !== undefined) {
     const finalCode = applyMgrScopeWrapper(data.content, filename, scopes[filename]);
-    await writeNodeFile(node, fullPluginPath, finalCode);
+    await writeNodeFile(node, targetPath, finalCode);
   } else {
-    const existingCode = await readNodeFile(node, fullPluginPath);
+    const existingCode = (r.activeExists && enabled)
+      ? await readNodeFile(node, r.activePath)
+      : (r.disabledExists ? await readNodeFile(node, r.disabledPath) : '');
     if (existingCode) {
       const finalCode = applyMgrScopeWrapper(existingCode, filename, scopes[filename]);
-      await writeNodeFile(node, fullPluginPath, finalCode);
+      await writeNodeFile(node, targetPath, finalCode);
     }
   }
+  // Rename AFTER writing so no window exists where the file is missing, and
+  // sync the jsonc order list.
+  await setPluginEnabled(node, filename, enabled);
 
-  await updateNodeJsonc(node, (parsed) => {
-    if (!Array.isArray(parsed.plugin)) parsed.plugin = [];
-    const relRef = `./plugin/${filename}`;
-    const existingIdx = parsed.plugin.findIndex(p => String(p).split('/').pop().split('\\').pop() === filename);
-    if (data.enabled !== false) {
-      if (existingIdx === -1) parsed.plugin.push(relRef);
-    } else if (existingIdx !== -1) {
-      parsed.plugin.splice(existingIdx, 1);
-    }
-  });
-
-  return { ok: true, filename };
+  return { ok: true, filename, enabled, needRestart: true };
 }
 
 export async function togglePlugin(nodeId = 'local', filename, enabled = true) {
-  if (!filename) throw new Error('Missing plugin filename');
+  if (!canonicalPluginName(filename)) throw new Error('Missing plugin filename');
   const node = getNode(nodeId);
-  await updateNodeJsonc(node, (parsed) => {
-    if (!Array.isArray(parsed.plugin)) parsed.plugin = [];
-    const relRef = `./plugin/${filename}`;
-    const idx = parsed.plugin.findIndex(p => String(p).split('/').pop().split('\\').pop() === filename);
-    if (enabled && idx === -1) {
-      parsed.plugin.push(relRef);
-    } else if (!enabled && idx !== -1) {
-      parsed.plugin.splice(idx, 1);
-    }
-  });
-  return { ok: true, filename, enabled };
+  const r = await setPluginEnabled(node, canonicalPluginName(filename), !!enabled);
+  return { ok: true, filename: r.canonical, enabled: !!enabled, needRestart: true };
 }
 
 export async function reorderPlugin(nodeId = 'local', filename, delta = 0) {
-  if (!filename) throw new Error('Missing plugin filename');
+  const canonical = canonicalPluginName(filename);
+  if (!canonical) throw new Error('Missing plugin filename');
   const node = getNode(nodeId);
   await updateNodeJsonc(node, (parsed) => {
     if (!Array.isArray(parsed.plugin)) parsed.plugin = [];
-    const idx = parsed.plugin.findIndex(p => String(p).split('/').pop().split('\\').pop() === filename);
+    const idx = parsed.plugin.findIndex(p => String(p).split('/').pop().split('\\').pop() === canonical);
     if (idx !== -1) {
       const targetIdx = idx + Number(delta || 0);
       if (targetIdx >= 0 && targetIdx < parsed.plugin.length) {
@@ -210,24 +320,25 @@ export async function reorderPlugin(nodeId = 'local', filename, delta = 0) {
       }
     }
   });
-  return { ok: true, filename };
+  return { ok: true, filename: canonical };
 }
 
 export async function deletePlugin(nodeId = 'local', filename) {
-  if (!filename) throw new Error('Missing plugin filename');
+  const canonical = canonicalPluginName(filename);
+  if (!canonical) throw new Error('Missing plugin filename');
   const node = getNode(nodeId);
-  const { sep, pluginDir } = getNodePaths(node);
-  const fullPluginPath = `${pluginDir}${sep}${filename}`;
+  const r = await resolvePluginFiles(node, canonical);
 
-  await deleteNodeFile(node, fullPluginPath);
+  if (r.activeExists) await deleteNodeFile(node, r.activePath);
+  if (r.disabledExists) await deleteNodeFile(node, r.disabledPath);
 
   await updateNodeJsonc(node, (parsed) => {
     if (Array.isArray(parsed.plugin)) {
-      parsed.plugin = parsed.plugin.filter(p => String(p).split('/').pop().split('\\').pop() !== filename);
+      parsed.plugin = parsed.plugin.filter(p => String(p).split('/').pop().split('\\').pop() !== canonical);
     }
   });
 
-  return { ok: true, filename };
+  return { ok: true, filename: canonical };
 }
 
 // ============================================================================

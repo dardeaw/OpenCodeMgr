@@ -245,7 +245,7 @@ export const MCP_TOOLS = [
       properties: {
         node: { type: 'string', description: 'Node ID (default: "local").' },
         filename: { type: 'string', description: 'Plugin filename (e.g. "codegraph-first.js").' },
-        enabled: { type: 'boolean', description: 'Whether the plugin is mounted in opencode.jsonc.' },
+        enabled: { type: 'boolean', description: 'File-level switch: disabling renames the plugin to <name>.js.disabled (opencode only loads *.js/*.mjs; restart opencode to take effect).' },
         scopeMode: { type: 'string', enum: ['all', 'include', 'exclude'], description: 'Per-agent scope mode: "all", "include" (only specified agents), or "exclude" (bypass on specified agents).' },
         scopeAgents: { type: 'array', items: { type: 'string' }, description: 'List of agent names for include/exclude scope mode.' },
         content: { type: 'string', description: 'Optional JS source code if creating or updating plugin code.' }

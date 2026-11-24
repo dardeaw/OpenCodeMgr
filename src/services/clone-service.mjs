@@ -11,6 +11,7 @@ import {
   getNodePaths,
   readNodeFile,
   writeNodeFile,
+  deleteNodeFile,
   backupNodeFile,
   runDbHelperOnNode,
   runNodeCmd,
@@ -470,11 +471,17 @@ export async function applyEnvironmentBundle(targetNodeId, bundle, options = {})
     const pluginsToEnable = [];
     for (const p of bundle.components.plugins) {
       if (!p || !p.filename) continue;
-      const targetPluginFile = `${pluginDir}${sep}${p.filename}`;
+      const activeFile = `${pluginDir}${sep}${p.filename}`;
+      // v1.13.0: a disabled plugin must land as `<name>.js.disabled`, never
+      // as an active file (on v2 an active file auto-loads at startup even
+      // when absent from the jsonc list). Remove the stale twin, if any.
+      const targetPluginFile = p.enabled ? activeFile : `${activeFile}.disabled`;
+      const staleTwin = p.enabled ? `${activeFile}.disabled` : activeFile;
       if (p.content) {
         const finalCode = tr(p.content);
         await writeNodeFile(targetNode, targetPluginFile, finalCode, backupTarget);
       }
+      await deleteNodeFile(targetNode, staleTwin, false).catch(() => {});
       if (bundleScopes[p.filename]) {
         scopes[p.filename] = bundleScopes[p.filename];
       } else if (p.scope) {

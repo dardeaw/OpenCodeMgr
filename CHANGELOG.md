@@ -4,6 +4,19 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.13.0] - 2026-11-24
+
+### 🛠️ 停用開關全面修正：檔案層級失能 + v2 原生 MCP 形狀
+
+- **Plugin 停用改為檔案層級**：過去只從 `opencode.jsonc` 的 `plugin` 陣列移除一行，實測 opencode v2.1.4 啟動時照樣載入目錄下所有 `.js`（未列名的 ps-guard 仍在攔截工具呼叫；新檔案也不會 hot-load）。現在停用 = 改名 `<name>.js.disabled`（opencode 只載入 `*.js`/`*.mjs`），啟用 = 改名回來；`plugin` 陣列保留為執行順序用途。
+- **列表顯示檔案真相**：`.disabled` 顯示已停用；v2 節點上存在但未列名的 active 檔案會顯示已啟用（啟動自動載入）；排序按鈕只對已列名項目出現；active 與 `.disabled` 並存時以 active 為準。
+- **MCP 停用支援 v2 原生形狀**：實測 v2 完全忽略舊式 `mcp.<id>.enabled: false`（`mcp list` 仍顯示 connected；連 flat `disabled: true` 也照連）。v2 節點改寫 `mcp.servers.<id>.disabled`（已驗證停用後顯示 disabled 且不影響其他 server），v1 節點維持舊形狀；刪除會清掉兩種形狀；MCP 頁同時合併顯示 flat + servers 來源。
+- **匯出／複刻不再誤啟用**：disabled 插件會以 `.disabled` 落地目標節點，並清掉殘留的另一副檔名。
+- **重啟提醒**：`toggle-plugin` / `save-plugin` / `save-mcp` / `delete` 回傳統一附 `needRestart: true`，前端 toast 加 `needRestartHint` 四語系（plugin 與 MCP 皆為啟動時載入，改完需重啟 opencode 生效）。
+- 附帶修正 `opencodemgr_configure_plugin` 的 `enabled` 欄位說明，以及經 MCP tool 存檔時 `action` 欄位洩漏進 server entry 的問題。
+
+---
+
 ## [v1.12.1] - 2026-11-17
 
 ### 🔧 清理：移除自更新回傳的硬編碼英文訊息

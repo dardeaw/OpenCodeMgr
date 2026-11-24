@@ -156,47 +156,68 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
   const pluginScopes = await readPluginScopes(node);
 
   // Plugins
+  // v1.13.0: opencode loads every *.js/*.mjs in the plugin dirs at startup
+  // regardless of jsonc list membership (verified on v2.1.4), and a rename to
+  // `*.js.disabled` unloads the file after restart. The snapshot therefore
+  // reports file-level truth: a `.disabled` variant (with no active twin)
+  // means disabled; an active file on a v2 node means enabled even when it
+  // is absent from the jsonc order list (auto-loaded). On pre-v2 nodes the
+  // legacy semantic (enabled == listed) is kept.
+  let nodeIsV2 = false;
+  try { nodeIsV2 = (await detectNodeOpenCodeVersion(node)).isV2; } catch {}
   const configuredPlugins = Array.isArray(parsed.plugin) ? parsed.plugin : [];
   const enabledPluginFiles = configuredPlugins.map(p => String(p).split('/').pop().split('\\').pop());
 
+  const stripDisabledSuffix = (fn) => fn.endsWith('.disabled') ? fn.slice(0, -'.disabled'.length) : fn;
+  const isDisabledFile = (fn) => fn.endsWith('.disabled');
   const pluginList = [];
-  const rawPluginFiles = [];
-  const seenPlugin = new Set();
+  // canonical name -> { fullPath, disabledVariant }; an active *.js twin
+  // always wins over a stale *.js.disabled twin when both exist.
+  const seenPlugin = new Map();
+  const notePluginFile = (canonical, fullPath, disabledVariant) => {
+    const prev = seenPlugin.get(canonical);
+    if (!prev || (prev.disabledVariant && !disabledVariant)) {
+      seenPlugin.set(canonical, { fullPath, disabledVariant });
+    }
+  };
   const pluginDirs = [pluginDir, paths.pluginDirAlt].filter(Boolean);
   if (node.type === 'local') {
     for (const dir of pluginDirs) {
       if (!fs.existsSync(dir)) continue;
       for (const f of fs.readdirSync(dir)) {
-        if ((f.endsWith('.js') || f.endsWith('.mjs')) && f !== '_mgr_scope.js' && !f.includes('.bak') && !seenPlugin.has(f)) {
-          seenPlugin.add(f);
-          rawPluginFiles.push({ name: f, fullPath: path.join(dir, f) });
-        }
+        if (f === '_mgr_scope.js' || f.includes('.bak')) continue;
+        if (!(f.endsWith('.js') || f.endsWith('.mjs') || f.endsWith('.disabled'))) continue;
+        notePluginFile(stripDisabledSuffix(f), path.join(dir, f), isDisabledFile(f));
       }
     }
   } else {
-    const lsCmds = pluginDirs.map(d => `ls -1 "${d}"/*.js "${d}"/*.mjs 2>/dev/null || true`).join('; ');
+    const lsCmds = pluginDirs.map(d => `ls -1 "${d}"/*.js "${d}"/*.mjs "${d}"/*.disabled 2>/dev/null || true`).join('; ');
     const lsP = await runNodeCmd(node, lsCmds);
     for (const fp of lsP.split(/\r?\n/).map(s => s.trim()).filter(Boolean)) {
       const fn = fp.split('/').pop();
-      if (fn !== '_mgr_scope.js' && !fn.includes('.bak') && !seenPlugin.has(fn)) {
-        seenPlugin.add(fn);
-        rawPluginFiles.push({ name: fn, fullPath: fp });
-      }
+      if (fn === '_mgr_scope.js' || fn.includes('.bak')) continue;
+      notePluginFile(stripDisabledSuffix(fn), fp, isDisabledFile(fn));
     }
   }
 
-  for (const pf of rawPluginFiles) {
+  for (const [canonical, pf] of seenPlugin) {
     const rawCode = await readNodeFile(node, pf.fullPath);
     const cleanCode = stripMgrScopeWrapper(rawCode);
-    const enabledIdx = enabledPluginFiles.indexOf(pf.name);
-    const scopeObj = pluginScopes[pf.name] || { mode: 'all', agents: [] };
+    const enabledIdx = enabledPluginFiles.indexOf(canonical);
+    const listed = enabledIdx !== -1;
+    // A lone `.disabled` file is always off. An active file on v2 is on
+    // (auto-loaded at startup); on v1 it follows the jsonc list.
+    const enabled = pf.disabledVariant ? false : (nodeIsV2 ? true : listed);
+    const scopeObj = pluginScopes[canonical] || { mode: 'all', agents: [] };
     pluginList.push({
-      id: pf.name.replace(/\.(m?js)$/, ''),
-      filename: pf.name,
-      enabled: enabledIdx !== -1,
-      order: enabledIdx !== -1 ? enabledIdx : 999,
+      id: canonical.replace(/\.(m?js)$/, ''),
+      filename: canonical,
+      enabled,
+      listed,
+      disabledFile: pf.disabledVariant,
+      order: listed ? enabledIdx : 999,
       scope: scopeObj,
-      description: extractPluginSummary(cleanCode, pf.name),
+      description: cleanCode ? extractPluginSummary(cleanCode, canonical) : '',
       content: cleanCode
     });
   }
@@ -216,7 +237,7 @@ export async function getNodeConfigSnapshot(nodeId = 'local') {
     console.warn(`[node-service] providers-meta fetch failed on ${node.id}:`, e.message);
   }
 
-  let opencodeVersionInfo = { version: '1.19.4', isV2: false, v2Ready: true };
+  let opencodeVersionInfo = { version: '1.19.4', isV2: nodeIsV2, v2Ready: true };
   try {
     opencodeVersionInfo = await detectNodeOpenCodeVersion(node);
   } catch {}
