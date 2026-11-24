@@ -4,6 +4,14 @@ All notable changes to **OpenCodeMgr** will be documented in this file.
 
 ---
 
+## [v1.13.1] - 2026-11-24
+
+### 🛠️ 版本偵測不再依賴 PATH
+
+- `detectNodeOpenCodeVersion` 在 PATH 過期的行程（例如 detached-respawn 重啟後的管理器）中會誤判回 `1.19.4`／`isV2: false`，導致 v2 節點被當成 v1 處理（插件顯示舊語義、MCP 寫回舊形狀）。現在 PATH 找不到時會改試常見絕對路徑（Windows npm 全域、`~/.opencode/bin` 等），只有全部失敗才回退預設值。
+
+---
+
 ## [v1.13.0] - 2026-11-24
 
 ### 🛠️ 停用開關全面修正：檔案層級失能 + v2 原生 MCP 形狀
