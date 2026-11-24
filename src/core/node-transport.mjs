@@ -5,10 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { exec } from 'node:child_process';
+import { exec, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const MANAGER_ROOT_DIR = path.resolve(__dirname, '..', '..');
@@ -257,16 +258,52 @@ export function isOpenCodeV2(versionStr) {
 }
 
 /**
+ * Candidate opencode binaries that do not depend on PATH.
+ * v1.13.0: a long-running (or detached-respawned) manager can carry a stale
+ * PATH that no longer resolves `opencode` (npm-global installs, reboots), so
+ * version detection must also try well-known absolute locations before
+ * giving up and falling back to the pre-v2 default.
+ */
+function opencodeBinaryCandidates() {
+  const out = [];
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+    out.push(
+      path.join(appData, 'npm', 'opencode.exe'),
+      path.join(appData, 'npm', 'opencode.cmd'),
+      path.join(os.homedir(), '.opencode', 'bin', 'opencode.exe')
+    );
+  } else {
+    out.push(path.join(os.homedir(), '.opencode', 'bin', 'opencode'));
+    out.push('/usr/local/bin/opencode', '/opt/homebrew/bin/opencode');
+  }
+  return out;
+}
+
+async function localOpenCodeVersion() {
+  // 1. PATH lookup (works when the manager's env is healthy).
+  try {
+    const { stdout } = await execAsync('opencode --version', { timeout: 5000 });
+    if (stdout && stdout.trim()) return stdout.trim();
+  } catch {}
+  // 2. Absolute well-known locations (immune to stale PATH).
+  for (const bin of opencodeBinaryCandidates()) {
+    try {
+      if (!fs.existsSync(bin)) continue;
+      const { stdout } = await execFileAsync(bin, ['--version'], { timeout: 5000 });
+      if (stdout && stdout.trim()) return stdout.trim();
+    } catch {}
+  }
+  return '';
+}
+/**
  * Detect OpenCode version running on a node and return compatibility flags
  */
 export async function detectNodeOpenCodeVersion(node) {
   try {
     if (node.type === 'local') {
-      let ver = '1.19.4';
-      try {
-        const { stdout } = await execAsync('opencode --version', { timeout: 3000 });
-        if (stdout && stdout.trim()) ver = stdout.trim();
-      } catch {}
+      const probed = await localOpenCodeVersion();
+      const ver = probed || '1.19.4';
       return { version: ver, isV2: isOpenCodeV2(ver), v2Ready: true };
     } else {
       const out = await runNodeCmd(node, 'opencode --version 2>/dev/null || ~/.opencode/bin/opencode --version 2>/dev/null || echo "1.19.4"');
